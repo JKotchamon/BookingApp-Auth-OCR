@@ -3,28 +3,56 @@ session_start();
 error_reporting(0);
 include('includes/dbconnection.php');
 
-if(isset($_POST['login'])) 
-  {
-    $email=$_POST['email'];
-    $password=md5($_POST['password']);
-    $sql ="SELECT ID FROM tbluser WHERE Email=:email and Password=:password";
-    $query=$dbh->prepare($sql);
-    $query->bindParam(':email',$email,PDO::PARAM_STR);
-$query-> bindParam(':password', $password, PDO::PARAM_STR);
-    $query-> execute();
-    $results=$query->fetchAll(PDO::FETCH_OBJ);
-    if($query->rowCount() > 0)
-{
-foreach ($results as $result) {
-$_SESSION['hbmsuid']=$result->ID;
-}
-$_SESSION['login']=$_POST['email'];
-echo "<script type='text/javascript'> document.location ='index.php'; </script>";
-} else{
-echo "<script>alert('Invalid Details');</script>";
-}
-}
+$flash = $_GET['msg'] ?? '';
+$inlineError = '';
 
+if (isset($_POST['login'])) {
+    $email    = trim((string)($_POST['email']    ?? ''));
+    $password = (string)($_POST['password'] ?? '');
+
+    $stmt = $dbh->prepare(
+        "SELECT ID, Email, Password, FullName, auth_method
+         FROM tbluser WHERE Email = :email LIMIT 1"
+    );
+    $stmt->execute([':email' => $email]);
+    $user = $stmt->fetch(PDO::FETCH_OBJ);
+
+    if (!$user) {
+        $inlineError = 'Invalid email or password.';
+    } elseif (empty($user->Password)) {
+        // OAuth-only account: no password set yet → resend Set Password email.
+        require_once 'includes/mailer.php';
+        $token = hbms_create_set_password_token($dbh, (int)$user->ID, 30);
+        hbms_send_set_password_email($user->Email, (string)$user->FullName, $token);
+        header('Location: signin.php?msg=set_password_sent');
+        exit;
+    } else {
+        $stored = (string)$user->Password;
+        $ok     = false;
+
+        // Bcrypt (preferred) — hashes start with $2y$, $2a$, etc.
+        if (password_verify($password, $stored)) {
+            $ok = true;
+        } elseif (preg_match('/^[a-f0-9]{32}$/i', $stored) && md5($password) === $stored) {
+            // Legacy md5 — accept once, then upgrade to bcrypt.
+            $ok = true;
+            $upgrade = $dbh->prepare("UPDATE tbluser SET Password = :pwd WHERE ID = :id");
+            $upgrade->execute([
+                ':pwd' => password_hash($password, PASSWORD_BCRYPT),
+                ':id'  => $user->ID,
+            ]);
+        }
+
+        if ($ok) {
+            $_SESSION['hbmsuid'] = $user->ID;
+            $_SESSION['login']   = $user->Email;
+            echo "<script type='text/javascript'> document.location ='index.php'; </script>";
+            exit;
+        }
+
+        $inlineError = 'Invalid email or password.';
+    }
+}
 ?>
 <!DOCTYPE HTML>
 <html>
@@ -58,16 +86,36 @@ echo "<script>alert('Invalid Details');</script>";
 		</div>
 </div>
 <!--header-->
-		<!--about-->
-		
+
 			<div class="content">
 				<div class="contact">
 				<div class="container">
-					
+
 					<h2>If you have an account with us, please log in.</h2>
-					
+
+					<?php if ($flash === 'set_password_sent'): ?>
+						<div style="background:#e7f7ec; border:1px solid #b7e0c2; color:#205c32;
+						            padding:12px 16px; border-radius:6px; max-width:640px; margin:14px 0;">
+							If an account exists for that email, we just sent a Set Password link.
+							Please check your inbox (and spam folder).
+						</div>
+					<?php elseif ($flash === 'already_has_password'): ?>
+						<div style="background:#fffbe6; border:1px solid #f5e3a3; color:#705c10;
+						            padding:12px 16px; border-radius:6px; max-width:640px; margin:14px 0;">
+							This account already has a password. Use it to sign in, or use
+							<a href="forgot-password.php">forgot password</a>.
+						</div>
+					<?php endif; ?>
+
+					<?php if ($inlineError): ?>
+						<div style="background:#fdecea; border:1px solid #f5b5b0; color:#7a1f17;
+						            padding:12px 16px; border-radius:6px; max-width:640px; margin:14px 0;">
+							<?php echo htmlentities($inlineError); ?>
+						</div>
+					<?php endif; ?>
+
 				<div class="contact-grids">
-					
+
 						<div class="col-md-6 contact-right">
 							<form method="post">
 
