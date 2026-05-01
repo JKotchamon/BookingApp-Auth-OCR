@@ -1,0 +1,125 @@
+<?php
+require_once __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__ . '/oauth-config.php';
+
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception as PHPMailerException;
+
+/**
+ * Build a configured PHPMailer instance from .env SMTP_* settings.
+ */
+function hbms_make_mailer(): PHPMailer
+{
+    $mail = new PHPMailer(true);
+
+    $mail->isSMTP();
+    $mail->Host       = $_ENV['SMTP_HOST']      ?? 'smtp.gmail.com';
+    $mail->Port       = (int)($_ENV['SMTP_PORT'] ?? 587);
+    $mail->SMTPAuth   = true;
+    $mail->Username   = $_ENV['SMTP_USER']      ?? '';
+    $mail->Password   = $_ENV['SMTP_PASS']      ?? '';
+    $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+
+    $mail->SMTPDebug  = 0;
+    $mail->CharSet    = 'UTF-8';
+
+    $fromEmail = $_ENV['SMTP_FROM_EMAIL'] ?? $mail->Username;
+    $fromName  = $_ENV['SMTP_FROM_NAME']  ?? 'HBMS Hotel Booking';
+    $mail->setFrom($fromEmail, $fromName);
+    $mail->addReplyTo($fromEmail, $fromName);
+
+    return $mail;
+}
+
+/**
+ * Send a "Set your local password" email containing a one-time link.
+ *
+ * @return array{ok:bool,error?:string}
+ */
+function hbms_send_set_password_email(string $toEmail, string $toName, string $token): array
+{
+    $appUrl  = rtrim($_ENV['APP_URL'] ?? 'http://localhost:8080', '/');
+    $link    = $appUrl . '/set-password.php?token=' . urlencode($token);
+    $expires = '30 minutes';
+
+    $safeName = htmlspecialchars($toName !== '' ? $toName : 'there', ENT_QUOTES, 'UTF-8');
+    $safeLink = htmlspecialchars($link, ENT_QUOTES, 'UTF-8');
+
+    $html = <<<HTML
+<!doctype html>
+<html><body style="font-family:Arial,Helvetica,sans-serif;background:#f5f6f8;padding:24px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#fff;border-radius:8px;border:1px solid #e5e7eb;">
+    <tr><td style="padding:24px 28px;border-bottom:1px solid #eef0f3;">
+      <h2 style="margin:0;color:#1f2937;">Set your password</h2>
+    </td></tr>
+    <tr><td style="padding:24px 28px;color:#374151;font-size:15px;line-height:1.55;">
+      <p>Hi {$safeName},</p>
+      <p>You're receiving this email because you signed in to <strong>HBMS Hotel Booking</strong> with Google
+         and chose to set a password for local login.</p>
+      <p style="text-align:center;margin:28px 0;">
+        <a href="{$safeLink}"
+           style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;
+                  padding:12px 22px;border-radius:6px;font-weight:600;">Set my password</a>
+      </p>
+      <p style="font-size:13px;color:#6b7280;">
+        This link expires in {$expires} and can only be used once.<br>
+        If you didn't request this, you can safely ignore this email.
+      </p>
+      <p style="font-size:12px;color:#9ca3af;word-break:break-all;">
+        Or copy this URL into your browser:<br>{$safeLink}
+      </p>
+    </td></tr>
+  </table>
+</body></html>
+HTML;
+
+    $text = "Hi {$toName},\n\n"
+          . "You requested to set a password for HBMS Hotel Booking.\n"
+          . "Open this link to set it (expires in {$expires}):\n\n"
+          . "{$link}\n\n"
+          . "If you didn't request this, ignore this email.\n";
+
+    try {
+        $mail = hbms_make_mailer();
+        $mail->addAddress($toEmail, $toName);
+        $mail->isHTML(true);
+        $mail->Subject = 'Set your password for HBMS Hotel Booking';
+        $mail->Body    = $html;
+        $mail->AltBody = $text;
+        $mail->send();
+        return ['ok' => true];
+    } catch (PHPMailerException $e) {
+        return ['ok' => false, 'error' => $e->getMessage()];
+    } catch (Throwable $e) {
+        return ['ok' => false, 'error' => $e->getMessage()];
+    }
+}
+
+/**
+ * Generate, persist, and return a fresh set-password token for a user.
+ * Invalidates any prior unused tokens for the same user.
+ */
+function hbms_create_set_password_token(PDO $dbh, int $userId, int $ttlMinutes = 30): string
+{
+    $invalidate = $dbh->prepare(
+        "UPDATE tbl_password_set_tokens
+         SET UsedAt = NOW()
+         WHERE UserID = :uid AND UsedAt IS NULL"
+    );
+    $invalidate->execute([':uid' => $userId]);
+
+    $token   = bin2hex(random_bytes(32));
+    $expires = (new DateTime("+{$ttlMinutes} minutes"))->format('Y-m-d H:i:s');
+
+    $ins = $dbh->prepare(
+        "INSERT INTO tbl_password_set_tokens (Token, UserID, ExpiresAt)
+         VALUES (:token, :uid, :exp)"
+    );
+    $ins->execute([
+        ':token' => $token,
+        ':uid'   => $userId,
+        ':exp'   => $expires,
+    ]);
+
+    return $token;
+}

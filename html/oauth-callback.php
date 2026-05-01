@@ -75,37 +75,45 @@ try {
         $photoPath = 'images/oauth/' . $photoFilename;
     }
 } catch (Exception $e) {
-    // Photo not available — continue without it
     $photoPath = null;
 }
 
-// Step 6: Check if user already exists by oauth_id or email
-$stmt = $dbh->prepare("SELECT ID FROM tbluser WHERE oauth_id = :oid OR Email = :email LIMIT 1");
-$stmt->execute([':oid' => $oauthId, ':email' => $email]);
+// Step 6: One email = one account. Look up by email (canonical identifier).
+$stmt = $dbh->prepare("SELECT ID, Password, auth_method, oauth_provider, oauth_id
+                       FROM tbluser WHERE Email = :email LIMIT 1");
+$stmt->execute([':email' => $email]);
 $existing = $stmt->fetch(PDO::FETCH_OBJ);
 
+$promptSetPassword = false;
+
 if ($existing) {
-    // Returning user — update profile data (sync on re-login)
+    $hasLocalPassword = !empty($existing->Password);
+    $newAuthMethod    = $hasLocalPassword ? 'both' : 'oauth';
+
     $upd = $dbh->prepare("UPDATE tbluser SET
         FullName       = COALESCE(NULLIF(:name, ''),  FullName),
         DateOfBirth    = COALESCE(:dob,               DateOfBirth),
         ProfilePhoto   = COALESCE(:photo,             ProfilePhoto),
         oauth_id       = :oid,
-        oauth_provider = 'microsoft'
+        oauth_provider = 'microsoft',
+        auth_method    = :method
         WHERE ID = :id");
     $upd->execute([
-        ':name'  => $fullName,
-        ':dob'   => $dob,
-        ':photo' => $photoPath,
-        ':oid'   => $oauthId,
-        ':id'    => $existing->ID,
+        ':name'   => $fullName,
+        ':dob'    => $dob,
+        ':photo'  => $photoPath,
+        ':oid'    => $oauthId,
+        ':method' => $newAuthMethod,
+        ':id'     => $existing->ID,
     ]);
-    $_SESSION['hbmsuid'] = $existing->ID;
-    $_SESSION['login']   = $email;
+
+    $userId            = (int)$existing->ID;
+    $promptSetPassword = !$hasLocalPassword;
 } else {
-    // New user — auto-register
-    $ins = $dbh->prepare("INSERT INTO tbluser (FullName, Email, Password, oauth_provider, oauth_id, DateOfBirth, ProfilePhoto)
-                          VALUES (:name, :email, '', 'microsoft', :oid, :dob, :photo)");
+    $ins = $dbh->prepare(
+        "INSERT INTO tbluser (FullName, Email, Password, auth_method, oauth_provider, oauth_id, DateOfBirth, ProfilePhoto)
+         VALUES (:name, :email, '', 'oauth', 'microsoft', :oid, :dob, :photo)"
+    );
     $ins->execute([
         ':name'  => $fullName,
         ':email' => $email,
@@ -113,8 +121,35 @@ if ($existing) {
         ':dob'   => $dob,
         ':photo' => $photoPath,
     ]);
-    $_SESSION['hbmsuid'] = $dbh->lastInsertId();
-    $_SESSION['login']   = $email;
+
+    $userId            = (int)$dbh->lastInsertId();
+    $promptSetPassword = true;
+}
+
+$linkUpsert = $dbh->prepare(
+    "INSERT INTO tbl_oauth_links (UserID, Provider, ProviderUserID, ProviderEmail, EmailVerified)
+     VALUES (:uid, 'microsoft', :pid, :pemail, 1)
+     ON DUPLICATE KEY UPDATE
+        ProviderUserID = VALUES(ProviderUserID),
+        ProviderEmail  = VALUES(ProviderEmail),
+        EmailVerified  = 1"
+);
+try {
+    $linkUpsert->execute([
+        ':uid'    => $userId,
+        ':pid'    => $oauthId,
+        ':pemail' => $email,
+    ]);
+} catch (PDOException $e) {
+    // Non-fatal.
+}
+
+$_SESSION['hbmsuid'] = $userId;
+$_SESSION['login']   = $email;
+
+if ($promptSetPassword) {
+    header('Location: set-password-prompt.php');
+    exit;
 }
 
 header('Location: index.php');

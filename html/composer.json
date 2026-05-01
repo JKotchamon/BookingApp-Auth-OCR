@@ -1,6 +1,7 @@
 {
     "require": {
         "thenetworg/oauth2-azure": "^2.1",
-        "league/oauth2-google": "^5.0"
+        "league/oauth2-google": "^5.0",
+        "phpmailer/phpmailer": "^7.0"
     }
 }
