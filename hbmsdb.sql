@@ -238,10 +238,93 @@ CREATE TABLE `tbluser` (
   `MobileNumber` bigint DEFAULT NULL,
   `Email` varchar(120) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `Password` varchar(120) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `auth_method` varchar(20) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'local',
+  `oauth_provider` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `oauth_id` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `DateOfBirth` date DEFAULT NULL,
+  `ProfilePhoto` varchar(500) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `RegDate` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`ID`),
-  KEY `ID` (`ID`)
+  KEY `ID` (`ID`),
+  KEY `idx_tbluser_email` (`Email`),
+  KEY `idx_tbluser_oauth` (`oauth_provider`,`oauth_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `tbl_oauth_links`
+-- One row per (user, OAuth provider) pair so a single account can be
+-- linked to multiple identity providers. Auxiliary to tbluser.
+--
+
+DROP TABLE IF EXISTS `tbl_oauth_links`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `tbl_oauth_links` (
+  `ID` int NOT NULL AUTO_INCREMENT,
+  `UserID` int NOT NULL,
+  `Provider` varchar(20) COLLATE utf8mb4_general_ci NOT NULL,
+  `ProviderUserID` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `ProviderEmail` varchar(200) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `EmailVerified` tinyint(1) NOT NULL DEFAULT '0',
+  `LinkedAt` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`ID`),
+  UNIQUE KEY `uniq_user_provider` (`UserID`,`Provider`),
+  KEY `idx_provider_lookup` (`Provider`,`ProviderUserID`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `tbl_password_set_tokens`
+-- One-time tokens emailed to OAuth-only users so they can attach a
+-- local password to their account.
+--
+
+DROP TABLE IF EXISTS `tbl_password_set_tokens`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `tbl_password_set_tokens` (
+  `ID` int NOT NULL AUTO_INCREMENT,
+  `Token` char(64) COLLATE utf8mb4_general_ci NOT NULL,
+  `UserID` int NOT NULL,
+  `ExpiresAt` datetime NOT NULL,
+  `UsedAt` datetime DEFAULT NULL,
+  `CreatedAt` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`ID`),
+  UNIQUE KEY `Token` (`Token`),
+  KEY `idx_user` (`UserID`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `tbl_email_verifications`
+-- One-time tokens emailed to a LOCAL account holder to confirm consent
+-- before attaching an OAuth identity (Case 2: account linking).
+-- Snapshots the freshly-fetched OAuth profile so the link can be
+-- finalised even after the OAuth session is gone.
+--
+
+DROP TABLE IF EXISTS `tbl_email_verifications`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `tbl_email_verifications` (
+  `ID` int NOT NULL AUTO_INCREMENT,
+  `Token` char(64) COLLATE utf8mb4_general_ci NOT NULL,
+  `UserID` int NOT NULL,
+  `Provider` varchar(20) COLLATE utf8mb4_general_ci NOT NULL,
+  `ProviderUserID` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `ProviderEmail` varchar(200) COLLATE utf8mb4_general_ci NOT NULL,
+  `EmailVerified` tinyint(1) NOT NULL DEFAULT '0',
+  `FullName` varchar(200) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `PhotoPath` varchar(500) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `DateOfBirth` date DEFAULT NULL,
+  `ExpiresAt` datetime NOT NULL,
+  `UsedAt` datetime DEFAULT NULL,
+  `CreatedAt` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`ID`),
+  UNIQUE KEY `Token` (`Token`),
+  KEY `idx_user_provider` (`UserID`,`Provider`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -250,7 +333,13 @@ CREATE TABLE `tbluser` (
 
 LOCK TABLES `tbluser` WRITE;
 /*!40000 ALTER TABLE `tbluser` DISABLE KEYS */;
-INSERT INTO `tbluser` VALUES (1,'Test',7897897899,'test@gmail.com','202cb962ac59075b964b07152d234b70','2023-03-24 17:07:28'),(2,'Sample',4644654646,'sample@gmail.com','202cb962ac59075b964b07152d234b70','2023-04-30 12:51:42'),(3,'Anuj Kumar',1234569871,'Test@test.com','f925916e2754e5e03f75dd58a5733251','2023-05-01 14:53:36'),(4,'John Doe',4125365412,'johndeo@test.com','f925916e2754e5e03f75dd58a5733251','2023-05-05 02:49:44');
+INSERT INTO `tbluser`
+  (`ID`,`FullName`,`MobileNumber`,`Email`,`Password`,`auth_method`,`RegDate`)
+VALUES
+  (1,'Test',7897897899,'test@gmail.com','202cb962ac59075b964b07152d234b70','local','2023-03-24 17:07:28'),
+  (2,'Sample',4644654646,'sample@gmail.com','202cb962ac59075b964b07152d234b70','local','2023-04-30 12:51:42'),
+  (3,'Anuj Kumar',1234569871,'Test@test.com','f925916e2754e5e03f75dd58a5733251','local','2023-05-01 14:53:36'),
+  (4,'John Doe',4125365412,'johndeo@test.com','f925916e2754e5e03f75dd58a5733251','local','2023-05-05 02:49:44');
 /*!40000 ALTER TABLE `tbluser` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;

@@ -105,6 +105,12 @@ if (isset($_POST['login'])) {
 							This account already has a password. Use it to sign in, or use
 							<a href="forgot-password.php">forgot password</a>.
 						</div>
+					<?php elseif ($flash === 'link_cancelled'): ?>
+						<div style="background:#fffbe6; border:1px solid #f5e3a3; color:#705c10;
+						            padding:12px 16px; border-radius:6px; max-width:640px; margin:14px 0;">
+							Account linking cancelled. Your existing account is unchanged —
+							sign in with your email and password as usual.
+						</div>
 					<?php endif; ?>
 
 					<?php if ($inlineError): ?>

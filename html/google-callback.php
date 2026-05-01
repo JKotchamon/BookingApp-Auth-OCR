@@ -75,38 +75,93 @@ if ($photoUrl) {
 }
 
 // Step 6: One email = one account. Look up by email (canonical identifier).
-$stmt = $dbh->prepare("SELECT ID, Password, auth_method, oauth_provider, oauth_id
+$stmt = $dbh->prepare("SELECT ID, FullName, Password, auth_method, oauth_provider, oauth_id
                        FROM tbluser WHERE Email = :email LIMIT 1");
 $stmt->execute([':email' => $email]);
 $existing = $stmt->fetch(PDO::FETCH_OBJ);
 
-$isNewUser            = false;
-$promptSetPassword    = false;
-
 if ($existing) {
-    // Existing account → link Google if not already linked, then sign in.
-    $hasLocalPassword = !empty($existing->Password);
-    $newAuthMethod    = $hasLocalPassword ? 'both' : 'oauth';
+    $hasLocalPassword     = !empty($existing->Password);
+    $googleAlreadyLinked  = ($existing->oauth_provider === 'google'
+                              && !empty($existing->oauth_id)
+                              && (string)$existing->oauth_id === (string)$oauthId);
 
+    if ($googleAlreadyLinked) {
+        // Already linked → just refresh profile snapshot and sign in.
+        $upd = $dbh->prepare("UPDATE tbluser SET
+            FullName     = COALESCE(NULLIF(:name, ''), FullName),
+            ProfilePhoto = COALESCE(:photo, ProfilePhoto)
+            WHERE ID = :id");
+        $upd->execute([
+            ':name'  => $fullName,
+            ':photo' => $photoPath,
+            ':id'    => $existing->ID,
+        ]);
+
+        // Keep tbl_oauth_links row in sync.
+        $linkUpsert = $dbh->prepare(
+            "INSERT INTO tbl_oauth_links (UserID, Provider, ProviderUserID, ProviderEmail, EmailVerified)
+             VALUES (:uid, 'google', :pid, :pemail, 1)
+             ON DUPLICATE KEY UPDATE
+                ProviderUserID = VALUES(ProviderUserID),
+                ProviderEmail  = VALUES(ProviderEmail),
+                EmailVerified  = 1"
+        );
+        try {
+            $linkUpsert->execute([
+                ':uid'    => (int)$existing->ID,
+                ':pid'    => $oauthId,
+                ':pemail' => $email,
+            ]);
+        } catch (PDOException $e) {
+            // Non-fatal.
+        }
+
+        $_SESSION['hbmsuid'] = (int)$existing->ID;
+        $_SESSION['login']   = $email;
+        header('Location: index.php');
+        exit;
+    }
+
+    if ($hasLocalPassword) {
+        // Case 2 — local account exists with a password but Google is NOT yet
+        // linked. We must obtain explicit consent via an email confirmation
+        // before joining the two identities. DO NOT log the user in here.
+        $_SESSION['pending_link'] = [
+            'user_id'          => (int)$existing->ID,
+            'email'            => $email,
+            'full_name_local'  => (string)($existing->FullName ?? ''),
+            'provider'         => 'google',
+            'provider_user_id' => (string)$oauthId,
+            'provider_email'   => $email,
+            'full_name'        => (string)$fullName,
+            'photo_path'       => $photoPath,
+            'date_of_birth'    => null,
+        ];
+        unset($_SESSION['hbmsuid'], $_SESSION['login']);
+        header('Location: link-account-prompt.php');
+        exit;
+    }
+
+    // Existing OAuth-only account (no password) — safe to attach Google
+    // transparently and sign in (Case 1 territory: we'll still offer
+    // a set-password email so they get a usable local credential).
     $upd = $dbh->prepare("UPDATE tbluser SET
         FullName       = COALESCE(NULLIF(:name, ''), FullName),
         ProfilePhoto   = COALESCE(:photo, ProfilePhoto),
         oauth_id       = :oid,
         oauth_provider = 'google',
-        auth_method    = :method
+        auth_method    = 'oauth'
         WHERE ID = :id");
     $upd->execute([
-        ':name'   => $fullName,
-        ':photo'  => $photoPath,
-        ':oid'    => $oauthId,
-        ':method' => $newAuthMethod,
-        ':id'     => $existing->ID,
+        ':name'  => $fullName,
+        ':photo' => $photoPath,
+        ':oid'   => $oauthId,
+        ':id'    => $existing->ID,
     ]);
 
-    $userId = (int)$existing->ID;
-
-    // First time linking Google to a passwordless account → still offer set-password.
-    $promptSetPassword = !$hasLocalPassword;
+    $userId            = (int)$existing->ID;
+    $promptSetPassword = true;
 } else {
     // Brand new user → create with auth_method='oauth' (no password yet).
     $ins = $dbh->prepare(
@@ -121,7 +176,6 @@ if ($existing) {
     ]);
 
     $userId            = (int)$dbh->lastInsertId();
-    $isNewUser         = true;
     $promptSetPassword = true;
 }
 

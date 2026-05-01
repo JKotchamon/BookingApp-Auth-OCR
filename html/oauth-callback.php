@@ -79,36 +79,94 @@ try {
 }
 
 // Step 6: One email = one account. Look up by email (canonical identifier).
-$stmt = $dbh->prepare("SELECT ID, Password, auth_method, oauth_provider, oauth_id
+$stmt = $dbh->prepare("SELECT ID, FullName, Password, auth_method, oauth_provider, oauth_id
                        FROM tbluser WHERE Email = :email LIMIT 1");
 $stmt->execute([':email' => $email]);
 $existing = $stmt->fetch(PDO::FETCH_OBJ);
 
-$promptSetPassword = false;
-
 if ($existing) {
-    $hasLocalPassword = !empty($existing->Password);
-    $newAuthMethod    = $hasLocalPassword ? 'both' : 'oauth';
+    $hasLocalPassword       = !empty($existing->Password);
+    $microsoftAlreadyLinked = ($existing->oauth_provider === 'microsoft'
+                                && !empty($existing->oauth_id)
+                                && (string)$existing->oauth_id === (string)$oauthId);
 
+    if ($microsoftAlreadyLinked) {
+        // Already linked → just refresh profile snapshot and sign in.
+        $upd = $dbh->prepare("UPDATE tbluser SET
+            FullName     = COALESCE(NULLIF(:name, ''), FullName),
+            DateOfBirth  = COALESCE(:dob, DateOfBirth),
+            ProfilePhoto = COALESCE(:photo, ProfilePhoto)
+            WHERE ID = :id");
+        $upd->execute([
+            ':name'  => $fullName,
+            ':dob'   => $dob,
+            ':photo' => $photoPath,
+            ':id'    => $existing->ID,
+        ]);
+
+        $linkUpsert = $dbh->prepare(
+            "INSERT INTO tbl_oauth_links (UserID, Provider, ProviderUserID, ProviderEmail, EmailVerified)
+             VALUES (:uid, 'microsoft', :pid, :pemail, 1)
+             ON DUPLICATE KEY UPDATE
+                ProviderUserID = VALUES(ProviderUserID),
+                ProviderEmail  = VALUES(ProviderEmail),
+                EmailVerified  = 1"
+        );
+        try {
+            $linkUpsert->execute([
+                ':uid'    => (int)$existing->ID,
+                ':pid'    => $oauthId,
+                ':pemail' => $email,
+            ]);
+        } catch (PDOException $e) {
+            // Non-fatal.
+        }
+
+        $_SESSION['hbmsuid'] = (int)$existing->ID;
+        $_SESSION['login']   = $email;
+        header('Location: index.php');
+        exit;
+    }
+
+    if ($hasLocalPassword) {
+        // Case 2 — local account exists with a password but Microsoft is NOT
+        // yet linked. Require explicit consent via email confirmation before
+        // joining identities. Do NOT log the user in here.
+        $_SESSION['pending_link'] = [
+            'user_id'          => (int)$existing->ID,
+            'email'            => $email,
+            'full_name_local'  => (string)($existing->FullName ?? ''),
+            'provider'         => 'microsoft',
+            'provider_user_id' => (string)$oauthId,
+            'provider_email'   => $email,
+            'full_name'        => (string)$fullName,
+            'photo_path'       => $photoPath,
+            'date_of_birth'    => $dob,
+        ];
+        unset($_SESSION['hbmsuid'], $_SESSION['login']);
+        header('Location: link-account-prompt.php');
+        exit;
+    }
+
+    // OAuth-only account (no password) — safe to attach Microsoft transparently.
     $upd = $dbh->prepare("UPDATE tbluser SET
-        FullName       = COALESCE(NULLIF(:name, ''),  FullName),
-        DateOfBirth    = COALESCE(:dob,               DateOfBirth),
-        ProfilePhoto   = COALESCE(:photo,             ProfilePhoto),
+        FullName       = COALESCE(NULLIF(:name, ''), FullName),
+        DateOfBirth    = COALESCE(:dob, DateOfBirth),
+        ProfilePhoto   = COALESCE(:photo, ProfilePhoto),
         oauth_id       = :oid,
         oauth_provider = 'microsoft',
-        auth_method    = :method
+        auth_method    = 'oauth'
         WHERE ID = :id");
     $upd->execute([
-        ':name'   => $fullName,
-        ':dob'    => $dob,
-        ':photo'  => $photoPath,
-        ':oid'    => $oauthId,
-        ':method' => $newAuthMethod,
-        ':id'     => $existing->ID,
+        ':name'  => $fullName,
+        ':dob'   => $dob,
+        ':photo' => $photoPath,
+        ':oid'   => $oauthId,
+        ':id'    => $existing->ID,
     ]);
 
     $userId            = (int)$existing->ID;
-    $promptSetPassword = !$hasLocalPassword;
+    $promptSetPassword = true;
 } else {
     $ins = $dbh->prepare(
         "INSERT INTO tbluser (FullName, Email, Password, auth_method, oauth_provider, oauth_id, DateOfBirth, ProfilePhoto)
