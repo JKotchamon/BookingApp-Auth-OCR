@@ -15,6 +15,13 @@ $provider = new League\OAuth2\Client\Provider\Google([
 
 // Step 1: No code yet — redirect user to Google login
 if (!isset($_GET['code'])) {
+    // if we r in linking mode, remember it in the sesion
+    if (isset($_GET['mode']) && $_GET['mode'] === 'link') {
+        $_SESSION['oauth_action'] = 'link';
+    } else {
+        unset($_SESSION['oauth_action']);
+    }
+
     $authUrl = $provider->getAuthorizationUrl([
         'scope' => ['openid', 'profile', 'email',
                     'https://www.googleapis.com/auth/user.birthday.read'],
@@ -98,6 +105,60 @@ if ($photoUrl) {
         $photoPath = null;
     }
 }
+
+// --- NEW LINKING LOGIC ---
+// if we r just trying to link an account while logged in...
+if (isset($_SESSION['oauth_action']) && $_SESSION['oauth_action'] === 'link') {
+    $currentUserId = $_SESSION['hbmsuid'] ?? 0;
+    unset($_SESSION['oauth_action']); // clear it so it doesn't loop
+
+    if ($currentUserId <= 0) {
+        exit('u gotta be logged in to link accounts buddy.');
+    }
+
+    // check if this google account is already taken by someone else
+    $check = $dbh->prepare("SELECT ID FROM tbluser WHERE oauth_provider = 'google' AND oauth_id = :oid AND ID != :uid LIMIT 1");
+    $check->execute([':oid' => $oauthId, ':uid' => $currentUserId]);
+    if ($check->fetch()) {
+        exit('this google account is already linked to another user. sry.');
+    }
+
+    // update the current user profile
+    $upd = $dbh->prepare("UPDATE tbluser SET
+        oauth_provider = 'google',
+        oauth_id       = :oid,
+        FullName       = COALESCE(NULLIF(:name, ''), FullName),
+        DateOfBirth    = COALESCE(:dob, DateOfBirth),
+        ProfilePhoto   = COALESCE(:photo, ProfilePhoto),
+        auth_method    = IF(auth_method = 'local', 'both', auth_method)
+        WHERE ID = :id");
+    $upd->execute([
+        ':oid'   => $oauthId,
+        ':name'  => $fullName,
+        ':dob'   => $dob,
+        ':photo' => $photoPath,
+        ':id'    => $currentUserId
+    ]);
+
+    // add to the link table too
+    $linkUpsert = $dbh->prepare(
+        "INSERT INTO tbl_oauth_links (UserID, Provider, ProviderUserID, ProviderEmail, EmailVerified)
+         VALUES (:uid, 'google', :pid, :pemail, 1)
+         ON DUPLICATE KEY UPDATE
+            ProviderUserID = VALUES(ProviderUserID),
+            ProviderEmail  = VALUES(ProviderEmail),
+            EmailVerified  = 1"
+    );
+    $linkUpsert->execute([
+        ':uid'    => $currentUserId,
+        ':pid'    => $oauthId,
+        ':pemail' => $email,
+    ]);
+
+    header('Location: profile.php?msg=linked');
+    exit;
+}
+// --- END LINKING LOGIC ---
 
 // Step 6: One email = one account. Look up by email (canonical identifier).
 $stmt = $dbh->prepare("SELECT ID, FullName, Password, auth_method, oauth_provider, oauth_id

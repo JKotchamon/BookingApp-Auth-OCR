@@ -18,7 +18,16 @@ $provider = new TheNetworg\OAuth2\Client\Provider\Azure([
 
 // Step 1: No code yet — redirect user to Microsoft login
 if (!isset($_GET['code'])) {
-    $authUrl = $provider->getAuthorizationUrl();
+    // if we r linking, save it for later
+    if (isset($_GET['mode']) && $_GET['mode'] === 'link') {
+        $_SESSION['oauth_action'] = 'link';
+    } else {
+        unset($_SESSION['oauth_action']);
+    }
+
+    $authUrl = $provider->getAuthorizationUrl([
+        'scope' => ['openid', 'profile', 'email', 'User.Read'],
+    ]);
     $_SESSION['oauth2state'] = $provider->getState();
     header('Location: ' . $authUrl);
     exit;
@@ -77,6 +86,60 @@ try {
 } catch (Exception $e) {
     $photoPath = null;
 }
+
+// --- NEW LINKING LOGIC ---
+// if we r trying to link while logged in...
+if (isset($_SESSION['oauth_action']) && $_SESSION['oauth_action'] === 'link') {
+    $currentUserId = $_SESSION['hbmsuid'] ?? 0;
+    unset($_SESSION['oauth_action']); // clear it
+
+    if ($currentUserId <= 0) {
+        exit('log in first if u wanna link accounts.');
+    }
+
+    // check if this ms account is already taken
+    $check = $dbh->prepare("SELECT ID FROM tbluser WHERE oauth_provider = 'microsoft' AND oauth_id = :oid AND ID != :uid LIMIT 1");
+    $check->execute([':oid' => $oauthId, ':uid' => $currentUserId]);
+    if ($check->fetch()) {
+        exit('this microsoft account is already tied to someone else.');
+    }
+
+    // update user profile
+    $upd = $dbh->prepare("UPDATE tbluser SET
+        oauth_provider = 'microsoft',
+        oauth_id       = :oid,
+        FullName       = COALESCE(NULLIF(:name, ''), FullName),
+        DateOfBirth    = COALESCE(:dob, DateOfBirth),
+        ProfilePhoto   = COALESCE(:photo, ProfilePhoto),
+        auth_method    = IF(auth_method = 'local', 'both', auth_method)
+        WHERE ID = :id");
+    $upd->execute([
+        ':oid'   => $oauthId,
+        ':name'  => $fullName,
+        ':dob'   => $dob,
+        ':photo' => $photoPath,
+        ':id'    => $currentUserId
+    ]);
+
+    // sync the link table
+    $linkUpsert = $dbh->prepare(
+        "INSERT INTO tbl_oauth_links (UserID, Provider, ProviderUserID, ProviderEmail, EmailVerified)
+         VALUES (:uid, 'microsoft', :pid, :pemail, 1)
+         ON DUPLICATE KEY UPDATE
+            ProviderUserID = VALUES(ProviderUserID),
+            ProviderEmail  = VALUES(ProviderEmail),
+            EmailVerified  = 1"
+    );
+    $linkUpsert->execute([
+        ':uid'    => $currentUserId,
+        ':pid'    => $oauthId,
+        ':pemail' => $email,
+    ]);
+
+    header('Location: profile.php?msg=linked');
+    exit;
+}
+// --- END LINKING LOGIC ---
 
 // Step 6: One email = one account. Look up by email (canonical identifier).
 $stmt = $dbh->prepare("SELECT ID, FullName, Password, auth_method, oauth_provider, oauth_id

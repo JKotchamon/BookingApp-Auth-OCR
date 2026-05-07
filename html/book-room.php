@@ -2,9 +2,41 @@
 include('includes/dbconnection.php');
 session_start();
 error_reporting(0);
-if (strlen($_SESSION['hbmsuid']==0)) {
-  header('location:logout.php');
-  } else{
+if (empty($_SESSION['hbmsuid'])) {
+    header('location:logout.php');
+    exit;
+} else {
+    // --- KYC GATE ---
+    // We gotta make sure they are verified before they can book!
+    $uid = (int)$_SESSION['hbmsuid'];
+    $sql = "SELECT kyc_status, kyc_expiry_date FROM tbluser WHERE ID = :id";
+    $query = $dbh->prepare($sql);
+    $query->execute([':id' => $uid]);
+    $kycUser = $query->fetch(PDO::FETCH_OBJ);
+
+    $kycStatus = $kycUser->kyc_status ?? 'unverified';
+
+    // Quick check: if they were verified but the ID expired, kick 'em back to re-verify
+    if ($kycStatus === 'verified' && !empty($kycUser->kyc_expiry_date)) {
+        if (strtotime($kycUser->kyc_expiry_date) <= time()) {
+            $dbh->prepare("UPDATE tbluser SET kyc_status='expired' WHERE ID=:id")
+                ->execute([':id' => $uid]);
+            $kycStatus = 'expired';
+        }
+    }
+
+    if ($kycStatus !== 'verified') {
+        $msgs = [
+            'unverified' => 'Yo! You need to verify your identity before you can book a room.',
+            'pending'    => 'Hang tight! Your verification is still being reviewed by the team.',
+            'rejected'   => 'Oops, your verification was rejected. Please try again with a better photo.',
+            'expired'    => 'Looks like your verification expired. Time for a quick refresh!',
+        ];
+        $_SESSION['kyc_msg'] = $msgs[$kycStatus] ?? 'Identity verification required.';
+        header('location:kyc-verify.php');
+        exit;
+    }
+    // --- END KYC GATE ---
 
  if(isset($_POST['submit']))
   {
