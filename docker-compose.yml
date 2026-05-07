@@ -21,7 +21,9 @@ services:
       MYSQL_ROOT_PASSWORD: StrongDBPassword@
       MYSQL_DATABASE: hbmsdb
     volumes:
-      - ./hbmsdb.sql:/docker-entrypoint-initdb.d/hbmsdb.sql
+      - ./hbmsdb.sql:/docker-entrypoint-initdb.d/00_hbmsdb.sql
+      - ./migrations/V001__oauth_user_columns.sql:/docker-entrypoint-initdb.d/01_V001__oauth_user_columns.sql
+      - ./migrations/V002__kyc_schema.sql:/docker-entrypoint-initdb.d/02_V002__kyc_schema.sql
       - db_data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-pStrongDBPassword@"]
