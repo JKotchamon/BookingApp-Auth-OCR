@@ -168,21 +168,25 @@ $existing = $stmt->fetch(PDO::FETCH_OBJ);
 
 if ($existing) {
     $hasLocalPassword     = !empty($existing->Password);
-    $googleAlreadyLinked  = ($existing->oauth_provider === 'google'
-                              && !empty($existing->oauth_id)
-                              && (string)$existing->oauth_id === (string)$oauthId);
+    // Check if this Google ID is already linked to this user in tbl_oauth_links.
+    $linkCheck = $dbh->prepare("SELECT 1 FROM tbl_oauth_links WHERE UserID = :uid AND Provider = 'google' AND ProviderUserID = :oid LIMIT 1");
+    $linkCheck->execute([':uid' => $existing->ID, ':oid' => $oauthId]);
+    $googleAlreadyLinked = (bool)$linkCheck->fetch();
 
     if ($googleAlreadyLinked) {
         // Already linked → refresh profile snapshot and sign in.
         $upd = $dbh->prepare("UPDATE tbluser SET
-            FullName     = COALESCE(NULLIF(:name, ''), FullName),
-            DateOfBirth  = COALESCE(:dob, DateOfBirth),
-            ProfilePhoto = COALESCE(:photo, ProfilePhoto)
+            FullName       = COALESCE(NULLIF(:name, ''), FullName),
+            DateOfBirth    = COALESCE(:dob, DateOfBirth),
+            ProfilePhoto   = COALESCE(:photo, ProfilePhoto),
+            oauth_provider = 'google',
+            oauth_id       = :oid
             WHERE ID = :id");
         $upd->execute([
             ':name'  => $fullName,
             ':dob'   => $dob,
             ':photo' => $photoPath,
+            ':oid'   => $oauthId,
             ':id'    => $existing->ID,
         ]);
 

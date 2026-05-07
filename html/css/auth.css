@@ -26,6 +26,7 @@
     display: flex !important;
     align-items: center;
     justify-content: center;
+    text-align: center;
     border-radius: 4px;
     font-size: 14px;
     font-weight: 600;
@@ -45,6 +46,10 @@
     background-color: #222; /* Black as seen in original design/screenshot */
     color: #fff;
     text-transform: uppercase;
+}
+
+.btn-submit:hover {
+    background-color: #000;
 }
 
 .btn-google {
@@ -85,28 +90,27 @@
     font-size: 14px;
 }
 
-.oauth-icon {
-    margin-left: 10px;
-    display: flex;
+.btn-google, .btn-microsoft {
+    display: flex !important;
     align-items: center;
+    justify-content: center;
+    gap: 12px;
 }
 
-.google-icon-wrapper {
-    background: transparent; /* Removed background as requested */
-    width: auto;
-    height: auto;
-    margin-left: 10px;
+.google-icon-wrapper, .oauth-icon {
+    background: transparent !important;
+    width: 18px;
+    height: 18px;
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
 }
 
-/* Ensure centering of the whole group */
-.btn-google span:last-child, .btn-microsoft span:last-child {
-    flex-grow: 0;
-    text-align: center;
-    padding-right: 0;
+.btn-google span, .btn-microsoft span {
+    display: inline-block;
 }
+
 
 .or-divider {
     color: #777;
@@ -127,3 +131,12 @@
 
 .or-divider::before { left: 0; }
 .or-divider::after { right: 0; }
+
+/* Readonly fields styling */
+.form-control[readonly] {
+    background-color: #f9fafb !important;
+    border-color: #e5e7eb !important;
+    color: #6b7280 !important;
+    cursor: not-allowed;
+}
+

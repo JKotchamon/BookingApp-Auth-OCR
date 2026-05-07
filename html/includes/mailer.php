@@ -13,18 +13,18 @@ function hbms_make_mailer(): PHPMailer
     $mail = new PHPMailer(true);
 
     $mail->isSMTP();
-    $mail->Host       = $_ENV['SMTP_HOST']      ?? 'smtp.gmail.com';
-    $mail->Port       = (int)($_ENV['SMTP_PORT'] ?? 587);
+    $mail->Host       = getenv('SMTP_HOST')      ?: 'smtp.gmail.com';
+    $mail->Port       = (int)(getenv('SMTP_PORT') ?: 587);
     $mail->SMTPAuth   = true;
-    $mail->Username   = $_ENV['SMTP_USER']      ?? '';
-    $mail->Password   = $_ENV['SMTP_PASS']      ?? '';
+    $mail->Username   = getenv('SMTP_USER')      ?: '';
+    $mail->Password   = getenv('SMTP_PASS')      ?: '';
     $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
 
     $mail->SMTPDebug  = 0;
     $mail->CharSet    = 'UTF-8';
 
-    $fromEmail = $_ENV['SMTP_FROM_EMAIL'] ?? $mail->Username;
-    $fromName  = $_ENV['SMTP_FROM_NAME']  ?? 'HBMS Hotel Booking';
+    $fromEmail = getenv('SMTP_FROM_EMAIL') ?: $mail->Username;
+    $fromName  = getenv('SMTP_FROM_NAME')  ?: 'HBMS Hotel Booking';
     $mail->setFrom($fromEmail, $fromName);
     $mail->addReplyTo($fromEmail, $fromName);
 
@@ -38,7 +38,7 @@ function hbms_make_mailer(): PHPMailer
  */
 function hbms_send_set_password_email(string $toEmail, string $toName, string $token): array
 {
-    $appUrl  = rtrim($_ENV['APP_URL'] ?? 'http://localhost:8080', '/');
+    $appUrl  = rtrim(getenv('APP_URL') ?: 'http://localhost:8080', '/');
     $link    = $appUrl . '/set-password.php?token=' . urlencode($token);
     $expires = '30 minutes';
 
@@ -192,7 +192,7 @@ function hbms_send_account_link_email(
     string $token,
     string $provider
 ): array {
-    $appUrl  = rtrim($_ENV['APP_URL'] ?? 'http://localhost:8080', '/');
+    $appUrl  = rtrim(getenv('APP_URL') ?: 'http://localhost:8080', '/');
     $link    = $appUrl . '/confirm-link-account.php?token=' . urlencode($token);
     $expires = '30 minutes';
 

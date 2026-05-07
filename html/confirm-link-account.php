@@ -123,6 +123,7 @@ $providerLabel = $tokenRow ? ucfirst((string)$tokenRow->Provider) : 'OAuth';
 <title>Hotel Booking Management System | Confirm Account Link</title>
 <link href="css/bootstrap.css" rel="stylesheet" type="text/css" media="all">
 <link href="css/style.css" rel="stylesheet" type="text/css" media="all" />
+<link href="css/auth.css" rel="stylesheet" type="text/css" media="all" />
 <script src="js/jquery-1.11.1.min.js"></script>
 <script src="js/bootstrap.js"></script>
 </head>
@@ -136,34 +137,46 @@ $providerLabel = $tokenRow ? ucfirst((string)$tokenRow->Provider) : 'OAuth';
     <div class="content">
         <div class="contact">
             <div class="container">
-                <h2>Account linking</h2>
+                <div class="contact-grids">
+                    <div class="col-md-8 contact-right">
+                        <div class="auth-form-wrapper" style="max-width: 700px;">
+                            <h2>Account linking</h2>
+                            <br>
 
-                <?php if ($done): ?>
-                    <div class="col-md-6 contact-right">
-                        <div style="background:#e7f7ec; border:1px solid #b7e0c2; color:#205c32;
-                                    padding:14px 18px; border-radius:6px;">
-                            <strong>All set!</strong> Your <?php echo htmlentities($providerLabel); ?>
-                            account is now linked to your HBMS Hotel Booking account.
-                            From now on you can sign in with either your password or
-                            <?php echo htmlentities($providerLabel); ?>.
+                            <?php if ($done): ?>
+                                <div style="background:#e7f7ec; border:1px solid #b7e0c2; color:#205c32;
+                                            padding:18px 22px; border-radius:8px; margin:20px 0;">
+                                    <h4 style="margin-top:0; font-weight:700;">All set!</h4>
+                                    <p style="margin-bottom:0;">
+                                        Your <?php echo htmlentities($providerLabel); ?> account is now linked to your HBMS Hotel Booking account.
+                                        You can now sign in with either your password or <?php echo htmlentities($providerLabel); ?>.
+                                    </p>
+                                </div>
+                                <div style="margin-top:25px; display: flex; gap: 15px;">
+                                    <a href="index.php" class="btn-auth-primary btn-submit" style="padding: 12px 25px; width: auto !important; text-decoration: none; text-align: center;">
+                                        Continue to Home
+                                    </a>
+                                    <a href="profile.php" class="btn-auth-primary" style="background:#f3f4f6; color:#374151; border:1px solid #d1d5db; padding: 12px 25px; width: auto !important; text-decoration: none; text-align: center;">
+                                        View Profile
+                                    </a>
+                                </div>
+                            <?php else: ?>
+                                <div style="background:#fdecea; border:1px solid #f5b5b0; color:#7a1f17;
+                                            padding:18px 22px; border-radius:8px; margin:20px 0;">
+                                    <h4 style="margin-top:0; font-weight:700;">Error</h4>
+                                    <p style="margin-bottom:0;">
+                                        <?php echo htmlentities($error); ?>
+                                    </p>
+                                </div>
+                                <div style="margin-top:25px;">
+                                    <a href="signin.php" class="btn-auth-primary btn-submit" style="padding: 12px 25px; width: auto !important; text-decoration: none; text-align: center;">
+                                        Back to Sign In
+                                    </a>
+                                </div>
+                            <?php endif; ?>
                         </div>
-                        <p style="margin-top:18px;">
-                            <a href="index.php" style="color:#2563eb;">Continue to home &rarr;</a>
-                            &nbsp;·&nbsp;
-                            <a href="profile.php">View my profile</a>
-                        </p>
                     </div>
-                <?php else: ?>
-                    <div class="col-md-6 contact-right">
-                        <div style="background:#fdecea; border:1px solid #f5b5b0; color:#7a1f17;
-                                    padding:14px 18px; border-radius:6px;">
-                            <?php echo htmlentities($error); ?>
-                        </div>
-                        <p style="margin-top:18px;">
-                            <a href="signin.php" style="color:#2563eb;">Back to sign in</a>
-                        </p>
-                    </div>
-                <?php endif; ?>
+                </div>
             </div>
         </div>
     </div>

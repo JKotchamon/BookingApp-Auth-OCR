@@ -59,7 +59,7 @@ try {
 $oauthId  = $me['id']          ?? '';
 $email    = $me['mail']        ?? $me['userPrincipalName'] ?? '';
 $fullName = $me['displayName'] ?? '';
-$dob      = (isset($me['birthday']) && $me['birthday'] !== '') ? $me['birthday'] : null;
+$dob      = (isset($me['birthday']) && $me['birthday'] !== '') ? date('Y-m-d', strtotime($me['birthday'])) : null;
 
 if (empty($email)) {
     exit('Could not retrieve email from Microsoft account.');
@@ -149,21 +149,25 @@ $existing = $stmt->fetch(PDO::FETCH_OBJ);
 
 if ($existing) {
     $hasLocalPassword       = !empty($existing->Password);
-    $microsoftAlreadyLinked = ($existing->oauth_provider === 'microsoft'
-                                && !empty($existing->oauth_id)
-                                && (string)$existing->oauth_id === (string)$oauthId);
+    // Check if this Microsoft ID is already linked to this user in tbl_oauth_links.
+    $linkCheck = $dbh->prepare("SELECT 1 FROM tbl_oauth_links WHERE UserID = :uid AND Provider = 'microsoft' AND ProviderUserID = :oid LIMIT 1");
+    $linkCheck->execute([':uid' => $existing->ID, ':oid' => $oauthId]);
+    $microsoftAlreadyLinked = (bool)$linkCheck->fetch();
 
     if ($microsoftAlreadyLinked) {
         // Already linked → just refresh profile snapshot and sign in.
         $upd = $dbh->prepare("UPDATE tbluser SET
-            FullName     = COALESCE(NULLIF(:name, ''), FullName),
-            DateOfBirth  = COALESCE(:dob, DateOfBirth),
-            ProfilePhoto = COALESCE(:photo, ProfilePhoto)
+            FullName       = COALESCE(NULLIF(:name, ''), FullName),
+            DateOfBirth    = COALESCE(:dob, DateOfBirth),
+            ProfilePhoto   = COALESCE(:photo, ProfilePhoto),
+            oauth_provider = 'microsoft',
+            oauth_id       = :oid
             WHERE ID = :id");
         $upd->execute([
             ':name'  => $fullName,
             ':dob'   => $dob,
             ':photo' => $photoPath,
+            ':oid'   => $oauthId,
             ':id'    => $existing->ID,
         ]);
 
