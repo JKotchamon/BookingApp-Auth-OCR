@@ -16,7 +16,8 @@ $provider = new League\OAuth2\Client\Provider\Google([
 // Step 1: No code yet — redirect user to Google login
 if (!isset($_GET['code'])) {
     $authUrl = $provider->getAuthorizationUrl([
-        'scope' => ['openid', 'profile', 'email'],
+        'scope' => ['openid', 'profile', 'email',
+                    'https://www.googleapis.com/auth/user.birthday.read'],
     ]);
     $_SESSION['oauth2state'] = $provider->getState();
     header('Location: ' . $authUrl);
@@ -50,6 +51,30 @@ $oauthId  = $googleUser->getId();
 $email    = $googleUser->getEmail()    ?? '';
 $fullName = $googleUser->getName()     ?? '';
 $photoUrl = $googleUser->getAvatar()   ?? null;
+
+// Fetch Date of Birth from Google People API
+// (requires the user.birthday.read scope; may be null if not set in Google account)
+$dob = null;
+try {
+    $ctx = stream_context_create(['http' => [
+        'header'  => 'Authorization: Bearer ' . $token->getToken(),
+        'timeout' => 5,
+    ]]);
+    $peopleRaw = @file_get_contents(
+        'https://people.googleapis.com/v1/people/me?personFields=birthdays',
+        false, $ctx
+    );
+    if ($peopleRaw !== false) {
+        $peopleData = json_decode($peopleRaw, true);
+        $bday = $peopleData['birthdays'][0]['date'] ?? null;
+        if ($bday && isset($bday['year'], $bday['month'], $bday['day'])
+                  && $bday['year'] > 1900) {
+            $dob = sprintf('%04d-%02d-%02d', $bday['year'], $bday['month'], $bday['day']);
+        }
+    }
+} catch (Exception $e) {
+    $dob = null; // non-fatal — DoB is optional
+}
 
 if (empty($email)) {
     exit('Could not retrieve email from Google account.');
@@ -87,13 +112,15 @@ if ($existing) {
                               && (string)$existing->oauth_id === (string)$oauthId);
 
     if ($googleAlreadyLinked) {
-        // Already linked → just refresh profile snapshot and sign in.
+        // Already linked → refresh profile snapshot and sign in.
         $upd = $dbh->prepare("UPDATE tbluser SET
             FullName     = COALESCE(NULLIF(:name, ''), FullName),
+            DateOfBirth  = COALESCE(:dob, DateOfBirth),
             ProfilePhoto = COALESCE(:photo, ProfilePhoto)
             WHERE ID = :id");
         $upd->execute([
             ':name'  => $fullName,
+            ':dob'   => $dob,
             ':photo' => $photoPath,
             ':id'    => $existing->ID,
         ]);
@@ -136,7 +163,7 @@ if ($existing) {
             'provider_email'   => $email,
             'full_name'        => (string)$fullName,
             'photo_path'       => $photoPath,
-            'date_of_birth'    => null,
+            'date_of_birth'    => $dob,
         ];
         unset($_SESSION['hbmsuid'], $_SESSION['login']);
         header('Location: link-account-prompt.php');
@@ -148,6 +175,7 @@ if ($existing) {
     // a set-password email so they get a usable local credential).
     $upd = $dbh->prepare("UPDATE tbluser SET
         FullName       = COALESCE(NULLIF(:name, ''), FullName),
+        DateOfBirth    = COALESCE(:dob, DateOfBirth),
         ProfilePhoto   = COALESCE(:photo, ProfilePhoto),
         oauth_id       = :oid,
         oauth_provider = 'google',
@@ -155,6 +183,7 @@ if ($existing) {
         WHERE ID = :id");
     $upd->execute([
         ':name'  => $fullName,
+        ':dob'   => $dob,
         ':photo' => $photoPath,
         ':oid'   => $oauthId,
         ':id'    => $existing->ID,
@@ -165,13 +194,14 @@ if ($existing) {
 } else {
     // Brand new user → create with auth_method='oauth' (no password yet).
     $ins = $dbh->prepare(
-        "INSERT INTO tbluser (FullName, Email, Password, auth_method, oauth_provider, oauth_id, ProfilePhoto)
-         VALUES (:name, :email, '', 'oauth', 'google', :oid, :photo)"
+        "INSERT INTO tbluser (FullName, Email, Password, auth_method, oauth_provider, oauth_id, DateOfBirth, ProfilePhoto)
+         VALUES (:name, :email, '', 'oauth', 'google', :oid, :dob, :photo)"
     );
     $ins->execute([
         ':name'  => $fullName,
         ':email' => $email,
         ':oid'   => $oauthId,
+        ':dob'   => $dob,
         ':photo' => $photoPath,
     ]);
 
