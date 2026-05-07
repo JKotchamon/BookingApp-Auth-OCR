@@ -11,6 +11,7 @@ Every migration is safe to re-run (`IF NOT EXISTS` throughout).
 |---|---|---|
 | `V001__oauth_user_columns.sql` | `hbms_backup.sql` (original schema) | `auth_method`, `oauth_provider`, `oauth_id`, `DateOfBirth`, `ProfilePhoto` on `tbluser`; creates `tbl_oauth_links`, `tbl_password_set_tokens`, `tbl_email_verifications` |
 | `V002__kyc_schema.sql` | V001 | `kyc_status`, `kyc_verified_at`, `kyc_expiry_date` on `tbluser`; creates `tbl_kyc_records`, `tbl_kyc_audit_log`, `tbl_booking_risk_flags` |
+| `V003__tighten_auth_method_enum.sql` | V001 | Changes `auth_method` from `VARCHAR(20)` to `ENUM('local','oauth','both')` for DB-level constraint; adds `ON DELETE CASCADE` FK to `tbl_oauth_links` |
 
 ---
 
