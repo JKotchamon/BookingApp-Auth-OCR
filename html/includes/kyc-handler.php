@@ -159,5 +159,3 @@ function logKycAction($dbh, $userId, $action, $details = null) {
         ':sig'     => $signature
     ]);
 }
-?>
-

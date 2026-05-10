@@ -61,4 +61,3 @@ function computeBlindIndex($data) {
     $pepper = getenv('KYC_BLIND_INDEX_PEPPER') ?: 'HBMS_PEPPER_2024_STRICT';
     return hash_hmac('sha256', strtoupper(trim($data)), $pepper);
 }
-?>
