@@ -143,8 +143,72 @@ unset($_SESSION['kyc_msg']);
 <link href="css/style.css" rel="stylesheet" type="text/css" media="all" />
 <script src="js/jquery-1.11.1.min.js"></script>
 <script src="js/bootstrap.js"></script>
+<style>
+    /* Premium Loading Overlay */
+    #loading-overlay {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(10px);
+        z-index: 9999;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+    .spinner {
+        width: 60px;
+        height: 60px;
+        border: 6px solid #f3f3f3;
+        border-top: 6px solid #2ecc71;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 20px;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .loading-text { font-size: 1.2em; color: #2c3e50; font-weight: 500; font-family: 'Roboto', sans-serif; }
+
+    /* Button and Form Style */
+    .btn-submit {
+        background: #2ecc71;
+        color: white;
+        border: none;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        transition: all 0.3s;
+    }
+    .btn-submit:hover {
+        background: #27ae60;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(46, 204, 113, 0.3);
+    }
+    .upload-zone {
+        transition: all 0.3s;
+        border: 2px dashed #ddd;
+    }
+    .upload-zone:hover {
+        border-color: #2ecc71;
+        background: #f9fffb !important;
+    }
+</style>
+<script>
+    $(document).ready(function() {
+        $('form').on('submit', function() {
+            // Only show loader on the upload form, not the confirm form
+            if ($('#passport_file').length > 0 && $('#passport_file').val()) {
+                $('#loading-overlay').css('display', 'flex');
+            }
+        });
+    });
+</script>
 </head>
 <body>
+    <div id="loading-overlay">
+        <div class="spinner"></div>
+        <div class="loading-text">Verifying Identity...</div>
+        <p style="color: #7f8c8d; margin-top: 10px;">This may take up to 10 seconds.</p>
+    </div>
     <div class="header head-top">
         <div class="container">
             <?php include_once('includes/header.php');?>
@@ -175,7 +239,7 @@ unset($_SESSION['kyc_msg']);
                             <form method="post" enctype="multipart/form-data" style="background: #fdfdfd; padding: 40px; border-radius: 12px; border: 1px solid #eee; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
                                 <div class="form-group">
                                     <label style="font-weight: 600; display: block; margin-bottom: 12px; color: #333;">Passport Main Page (with photo):</label>
-                                    <div style="border: 2px dashed #ccc; padding: 20px; text-align: center; border-radius: 8px; background: #fff; cursor: pointer;" onclick="$('#passport_file').click();">
+                                    <div class="upload-zone" style="padding: 20px; text-align: center; border-radius: 8px; background: #fff; cursor: pointer;" onclick="$('#passport_file').click();">
                                         <i class="glyphicon glyphicon-camera" style="font-size: 32px; color: #999; margin-bottom: 10px;"></i>
                                         <p id="file-name" style="color: #666;">Click to select or drag and drop (JPG/PNG)</p>
                                     </div>
@@ -203,6 +267,7 @@ unset($_SESSION['kyc_msg']);
                                 </div>
                                 <div class="panel-body">
                                     <form method="POST" action="kyc-crosscheck.php">
+                                        <input type="hidden" name="rmid" value="<?php echo (int)($_GET['rmid'] ?? $_POST['rmid'] ?? 0); ?>">
                                         <div class="form-group">
                                             <label>Full Name (as on passport)</label>
                                             <input type="text" name="passport_name" class="form-control" value="<?php echo htmlspecialchars($ocrData['name'] ?? ''); ?>" required>

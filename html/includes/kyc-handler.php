@@ -29,12 +29,6 @@ function sendToOcr($imageData, $mimeType) {
     $error = curl_error($ch);
     curl_close($ch);
 
-    // DEBUG: Echo raw response to screen to see structure
-    if ($response) {
-        // echo "<!-- DEBUG OCR RESPONSE: " . htmlspecialchars($response) . " -->";
-        // If you want to see it visibly on the page for a moment:
-        echo "<pre style='background:#eee;padding:10px;border:1px solid #ccc;'>DEBUG RAW: " . htmlspecialchars($response) . "</pre>";
-    }
 
     // Cleanup temp file
     unlink($tmpFile);

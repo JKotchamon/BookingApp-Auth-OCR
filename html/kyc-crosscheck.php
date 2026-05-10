@@ -131,11 +131,9 @@ if ($newStatus === 'pending') {
         $finalImagePath = $tempName;
     }
 } else {
-    // Ranveer's part: Cleanup sensitive data
-    if ($newStatus !== 'pending') {
-        if (file_exists($sessionTempFile)) {
-            unlink($sessionTempFile); // Shred the temp image if not needed for review
-        }
+    // Auto-verified or Hard Blocked -> Delete image immediately
+    if (file_exists($sessionTempFile)) {
+        unlink($sessionTempFile);
     }
 }
 

@@ -187,37 +187,47 @@ if (empty($_SESSION['hbmsuid'])) {
     header('location:logout.php');
     exit;
 } else {
-    // --- KYC GATE ---
-    // We gotta make sure they are verified before they can book!
-    $uid = (int)$_SESSION['hbmsuid'];
-    $sql = "SELECT kyc_status, kyc_expiry_date FROM tbluser WHERE ID = :id";
-    $query = $dbh->prepare($sql);
-    $query->execute([':id' => $uid]);
-    $kycUser = $query->fetch(PDO::FETCH_OBJ);
+    // =========================================================================
+    // KYC BOOKING GATE
+    // -------------------------------------------------------------------------
+    // No booking can be confirmed unless the user is KYC-verified and the KYC
+    // is not expired. Auto-flips 'verified -> expired' when past expiry so the
+    // gate stays in sync with kyc-status.php's own expiry handling.
+    // =========================================================================
+    $gateUid = (int)$_SESSION['hbmsuid'];
+    $gateQ = $dbh->prepare(
+        'SELECT kyc_status, kyc_expiry_date FROM tbluser WHERE ID = :uid LIMIT 1'
+    );
+    $gateQ->execute([':uid' => $gateUid]);
+    $gateUser = $gateQ->fetch(PDO::FETCH_OBJ);
 
-    $kycStatus = $kycUser->kyc_status ?? 'unverified';
+    $gateStatus = $gateUser->kyc_status       ?? 'unverified';
+    $gateExpiry = $gateUser->kyc_expiry_date ?? null;
 
-    // Quick check: if they were verified but the ID expired, kick 'em back to re-verify
-    if ($kycStatus === 'verified' && !empty($kycUser->kyc_expiry_date)) {
-        if (strtotime($kycUser->kyc_expiry_date) <= time()) {
-            $dbh->prepare("UPDATE tbluser SET kyc_status='expired' WHERE ID=:id")
-                ->execute([':id' => $uid]);
-            $kycStatus = 'expired';
-        }
+    // Auto-expire: a KYC marked 'verified' but past its expiry date is treated
+    // as expired and the DB is silently updated to match.
+    if ($gateStatus === 'verified' && $gateExpiry && strtotime($gateExpiry) <= time()) {
+        $dbh->prepare("UPDATE tbluser SET kyc_status='expired' WHERE ID = :uid")
+            ->execute([':uid' => $gateUid]);
+        $gateStatus = 'expired';
     }
 
-    if ($kycStatus !== 'verified') {
-        $msgs = [
-            'unverified' => 'Yo! You need to verify your identity before you can book a room.',
-            'pending'    => 'Hang tight! Your verification is still being reviewed by the team.',
-            'rejected'   => 'Oops, your verification was rejected. Please try again with a better photo.',
-            'expired'    => 'Looks like your verification expired. Time for a quick refresh!',
-        ];
-        $_SESSION['kyc_msg'] = $msgs[$kycStatus] ?? 'Identity verification required.';
-        header('location:kyc-verify.php');
+    // If anything other than 'verified', block the booking flow and route the
+    // user to the appropriate KYC page. Users with a submission already in flight
+    // (pending / flagged) go to kyc-status.php to read their state; everyone else
+    // goes straight to the upload form (per design Q1=A).
+    if ($gateStatus !== 'verified') {
+        $rmid = intval($_GET['rmid']);
+        if ($gateStatus === 'pending' || $gateStatus === 'rejected') {
+            header("Location: kyc-status.php?reason=booking&rmid=$rmid");
+        } else {
+            header("Location: kyc-verify.php?reason=booking&rmid=$rmid");
+        }
         exit;
     }
-    // --- END KYC GATE ---
+    // =========================================================================
+    // END KYC BOOKING GATE
+    // =========================================================================
 
  if(isset($_POST['submit']))
   {
