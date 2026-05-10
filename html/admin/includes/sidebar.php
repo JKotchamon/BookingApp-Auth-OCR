@@ -45,6 +45,12 @@
                                           </ul>
                                      </li>
                                     <li><a href="reg-users.php"><i class="lnr lnr-users"></i> <span>Reg Users</span></a></li>
+                                    <li id="menu-academico" ><a href="#"><i class="fa fa-check-square-o"></i> <span>KYC</span> <span class="fa fa-angle-right" style="float: right"></span></a>
+                                         <ul id="menu-academico-sub" >
+                                            <li id="menu-academico-avaliacoes" ><a href="kyc-review.php">Pending Review</a></li>
+                                            <li id="menu-academico-boletim" ><a href="kyc-audit-log.php">Audit Log</a></li>
+                                          </ul>
+                                     </li>
                                     <li id="menu-academico" ><a href="#"><i class="lnr lnr-book"></i> <span>Enquiry</span> <span class="fa fa-angle-right" style="float: right"></span></a>
                                          <ul id="menu-academico-sub" >
                                             <li id="menu-academico-avaliacoes" ><a href="read-enquiry.php">Read Enquiry</a></li>
