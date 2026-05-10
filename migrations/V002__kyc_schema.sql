@@ -10,7 +10,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 
 -- 1. Current KYC status (unverified, pending, verified, etc.)
 SET @col := (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tbluser' AND COLUMN_NAME = 'kyc_status');
-SET @sql := IF(@col = 0, "ALTER TABLE `tbluser` ADD COLUMN `kyc_status` ENUM('unverified','pending','verified','rejected','expired') NOT NULL DEFAULT 'unverified' AFTER `ProfilePhoto`","SELECT 1");
+SET @sql := IF(@col = 0, "ALTER TABLE `tbluser` ADD COLUMN `kyc_status` ENUM('unverified','pending','verified','rejected','expired','blocked') NOT NULL DEFAULT 'unverified' AFTER `ProfilePhoto`","SELECT 1");
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- 2. When they were verified
@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS `tbl_kyc_records` (
   `expiry_date`          DATE         DEFAULT NULL,
   `gender`               CHAR(1)      DEFAULT NULL,
   `issuing_country`      VARCHAR(3)   DEFAULT NULL,
-  `verification_status`  ENUM('pending','verified','rejected','expired','superseded') NOT NULL DEFAULT 'pending',
+  `verification_status`  ENUM('pending','verified','rejected','expired','superseded','blocked') NOT NULL DEFAULT 'pending',
   `verification_method`  VARCHAR(50)  DEFAULT NULL,
   `verified_at`          TIMESTAMP    NULL DEFAULT NULL,
   `verified_by`          VARCHAR(50)  DEFAULT NULL,
