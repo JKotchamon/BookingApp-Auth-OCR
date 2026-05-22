@@ -8,7 +8,7 @@ $uid = $_SESSION['hbmsuid'];
 $ocrData = null;
 $error = null;
 $blocked = false;
-$isSystemActive = file_exists(__DIR__ . '/includes/kyc_public_key.pem');
+$isSystemActive = file_exists(__DIR__ . '/keys/kyc_public_key.pem');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['passport'])) {
     // 1. Consent check

@@ -7,7 +7,7 @@ if (strlen($_SESSION['hbmsaid'] == 0)) {
     header('location:logout.php');
 } else {
     $msg = '';
-    $keyPath = __DIR__ . '/../includes/kyc_public_key.pem';
+    $keyPath = __DIR__ . '/../keys/kyc_public_key.pem';
 
     // Handle File Upload
     if (isset($_POST['upload'])) {
