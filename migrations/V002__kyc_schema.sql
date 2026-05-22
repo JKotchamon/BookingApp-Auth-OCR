@@ -33,8 +33,8 @@ CREATE TABLE IF NOT EXISTS `tbl_kyc_records` (
   `document_type`        VARCHAR(10)  DEFAULT NULL,
   `full_name_encrypted`  VARBINARY(512)  DEFAULT NULL, -- Encrypted with AES-256
   `nationality`          VARCHAR(3)   DEFAULT NULL,
-  `date_of_birth_enc`    VARBINARY(128)  DEFAULT NULL, -- Encrypted DOB
-  `document_number_enc`  VARBINARY(128)  DEFAULT NULL, -- Encrypted Doc Number
+  `date_of_birth_enc`    VARBINARY(512)  DEFAULT NULL, -- Encrypted DOB
+  `document_number_enc`  VARBINARY(512)  DEFAULT NULL, -- Encrypted Doc Number
   `document_number_hash` VARCHAR(64)  NOT NULL,        -- Hashed for fast lookups/duplicates
   `expiry_date`          DATE         DEFAULT NULL,
   `gender`               CHAR(1)      DEFAULT NULL,
