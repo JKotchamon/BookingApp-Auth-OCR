@@ -140,13 +140,14 @@ ob_end_flush();
 
                                         // Check legacy key
                                         $legacyPath = __DIR__ . '/../keys/kyc_public_key.pem';
+                                        $legacyFP = '';
                                         if (file_exists($legacyPath)) {
                                             $content = file_get_contents($legacyPath);
-                                            $fp = getPublicKeyFingerprint($content);
-                                            $serverKeys[$fp] = [
+                                            $legacyFP = getPublicKeyFingerprint($content);
+                                            $serverKeys[$legacyFP] = [
                                                 'name' => 'Legacy Key',
-                                                'fingerprint' => $fp,
-                                                'is_active' => (!empty($activeFingerprint) && $activeFingerprint === $fp)
+                                                'fingerprint' => $legacyFP,
+                                                'is_active' => (!empty($activeFingerprint) && $activeFingerprint === $legacyFP)
                                             ];
                                         }
 
@@ -232,6 +233,7 @@ ob_end_flush();
 
                                                 if($query->rowCount() > 0) {
                                                     foreach($results as $row) {
+                                                        $rowFingerprint = $row->key_fingerprint ?: $legacyFP;
                                                         ?>
                                                 <tr class="kyc-row" 
                                                     data-enc-name="<?php echo htmlentities($row->full_name_encrypted); ?>" 
@@ -239,7 +241,7 @@ ob_end_flush();
                                                     data-enc-sym="<?php echo htmlentities($row->symmetric_key_enc); ?>"
                                                     data-iv="<?php echo htmlentities($row->iv); ?>"
                                                     data-img-path="<?php echo urlencode($row->temp_image_path); ?>"
-                                                    data-key-fingerprint="<?php echo htmlentities($row->key_fingerprint ?? ''); ?>">
+                                                    data-key-fingerprint="<?php echo htmlentities($rowFingerprint); ?>">
                                                     <td>
                                                         <strong><?php echo htmlentities($row->OAuthName); ?></strong><br>
                                                         <small><?php echo htmlentities($row->Email); ?></small>
@@ -248,12 +250,24 @@ ob_end_flush();
                                                         Name: <code class="dec-name" style="color:#666; background:#eee; padding:2px 5px;">[Encrypted Data]</code><br>
                                                         Doc#: <code class="dec-num" style="color:#666; background:#eee; padding:2px 5px;">[Encrypted Data]</code>
                                                     </td>
-                                                    <td style="text-align: center; vertical-align: middle;">
-                                                        <span class="fingerprint-label" title="<?php echo htmlentities($row->key_fingerprint); ?>" style="font-family: 'Courier New', Courier, monospace; font-weight: bold; background: #f8f9fc; border: 1px solid #eaecf4; color: #4e73df; padding: 4px 8px; border-radius: 6px; font-size: 12px; display: inline-block;">
-                                                            <i class="fa fa-key" style="margin-right: 4px; color: #f39c12;"></i>
-                                                            <?php echo $row->key_fingerprint ? substr($row->key_fingerprint, 0, 12) . '...' : 'Legacy Key'; ?>
-                                                        </span>
-                                                    </td>
+                                                     <td style="text-align: center; vertical-align: middle;">
+                                                         <?php if ($rowFingerprint): ?>
+                                                             <div style="display: inline-flex; align-items: center; gap: 6px; justify-content: center;">
+                                                                 <span class="fingerprint-label" title="<?php echo htmlentities($rowFingerprint); ?>" style="font-family: 'Courier New', Courier, monospace; font-weight: bold; background: #f8f9fc; border: 1px solid #eaecf4; color: #4e73df; padding: 4px 8px; border-radius: 6px; font-size: 12px; display: inline-block; white-space: nowrap;">
+                                                                     <i class="fa fa-key" style="margin-right: 4px; color: #f39c12;"></i>
+                                                                     <?php echo substr($rowFingerprint, 0, 12) . '...'; ?>
+                                                                     <?php if (empty($row->key_fingerprint) && !empty($legacyFP)): ?>
+                                                                         <br><span style="font-size: 9px; color: #858796; font-weight: normal; text-transform: uppercase; display: block; margin-top: 2px;">Legacy Key</span>
+                                                                     <?php endif; ?>
+                                                                 </span>
+                                                                 <button class="btn btn-default btn-xs" style="padding: 3px 6px; font-size: 10px; border-color: #ddd; background: #fff;" onclick="copyFingerprint('<?php echo $rowFingerprint; ?>')" title="Copy required key fingerprint">
+                                                                     <i class="fa fa-copy" style="color: #4e73df;"></i>
+                                                                 </button>
+                                                             </div>
+                                                         <?php else: ?>
+                                                             <span class="text-muted" style="font-size: 12px; font-style: italic;">No Key</span>
+                                                         <?php endif; ?>
+                                                     </td>
                                                     <td>
                                                         <span class="badge badge-warning"><?php echo $row->name_match_score; ?>%</span>
                                                     </td>
