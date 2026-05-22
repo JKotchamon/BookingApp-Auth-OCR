@@ -45,7 +45,7 @@ $flash = $_GET['msg'] ?? '';
     <div class="content">
         <div class="contact">
             <div class="container">
-                <h2>Welcome, <?php echo htmlentities($user->FullName ?: 'there'); ?>!</h2>
+                <h2 style="margin-bottom: 20px;">Welcome, <?php echo htmlentities($user->FullName ?: 'there'); ?>!</h2>
                 <p style="font-size:16px; color:#444; max-width:640px;">
                     You're currently signed in with <strong>Google</strong>.
                     Would you like to set a password so you can also log in with email + password?
