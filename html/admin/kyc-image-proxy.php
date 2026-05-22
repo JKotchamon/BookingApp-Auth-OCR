@@ -33,14 +33,14 @@ if (!file_exists($filepath) || strpos(realpath($filepath), realpath('../uploads/
     exit;
 }
 
-// 5. Stream the image securely
-$mime = mime_content_type($filepath);
-if (strpos($mime, 'image/') !== 0) {
+// 5. Stream the encrypted binary safely
+$ext = strtolower(pathinfo($filepath, PATHINFO_EXTENSION));
+if ($ext !== 'enc' && $ext !== 'jpg') {
     header('HTTP/1.0 403 Forbidden');
     exit;
 }
 
-header('Content-Type: ' . $mime);
+header('Content-Type: application/octet-stream');
 header('Content-Length: ' . filesize($filepath));
 readfile($filepath);
 exit;

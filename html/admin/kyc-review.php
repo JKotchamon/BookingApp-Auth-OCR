@@ -94,6 +94,7 @@ ob_end_flush();
 <link href='//fonts.googleapis.com/css?family=Roboto:700,500,300,100italic,100,400' rel='stylesheet' type='text/css'/>
 <script src="js/jquery-1.10.2.min.js"></script>
 <script src="js/bootstrap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/forge/1.3.1/forge.min.js"></script>
 <style>
     .passport-thumb { max-width: 150px; border: 1px solid #ddd; padding: 2px; }
     .alert-top { margin: 15px 0; }
@@ -121,8 +122,13 @@ ob_end_flush();
                         <div class="panel panel-widget forms-panel">
                             <div class="forms">
                                 <div class="form-grids widget-shadow"> 
-                                    <div class="form-title">
+                                    <div class="form-title" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
                                         <h4>Pending Verifications Queue</h4>
+                                        <div style="background: #f9f9f9; padding: 10px 15px; border-radius: 6px; border: 1px solid #ddd; display: flex; align-items: center; gap: 10px;">
+                                            <i class="fa fa-key" style="color: #f39c12; font-size: 20px;"></i>
+                                            <label style="margin: 0; font-weight: normal;">Unlock Data (Private Key):</label>
+                                            <input type="file" id="privateKeyFile" accept=".pem" style="max-width: 220px; font-size: 12px;">
+                                        </div>
                                     </div>
                                     <div class="form-body">
                                         <table class="table table-bordered table-striped">
@@ -148,17 +154,20 @@ ob_end_flush();
 
                                                 if($query->rowCount() > 0) {
                                                     foreach($results as $row) {
-                                                        $decName = decryptField($row->full_name_encrypted);
-                                                        $decNum  = decryptField($row->document_number_enc);
                                                         ?>
-                                                <tr>
+                                                <tr class="kyc-row" 
+                                                    data-enc-name="<?php echo htmlentities($row->full_name_encrypted); ?>" 
+                                                    data-enc-num="<?php echo htmlentities($row->document_number_enc); ?>"
+                                                    data-enc-sym="<?php echo htmlentities($row->symmetric_key_enc); ?>"
+                                                    data-iv="<?php echo htmlentities($row->iv); ?>"
+                                                    data-img-path="<?php echo urlencode($row->temp_image_path); ?>">
                                                     <td>
                                                         <strong><?php echo htmlentities($row->OAuthName); ?></strong><br>
                                                         <small><?php echo htmlentities($row->Email); ?></small>
                                                     </td>
                                                     <td>
-                                                        Name: <code style="color:#d9534f"><?php echo htmlentities($decName); ?></code><br>
-                                                        Doc#: <code><?php echo htmlentities($decNum); ?></code>
+                                                        Name: <code class="dec-name" style="color:#666; background:#eee; padding:2px 5px;">[Encrypted Data]</code><br>
+                                                        Doc#: <code class="dec-num" style="color:#666; background:#eee; padding:2px 5px;">[Encrypted Data]</code>
                                                     </td>
                                                     <td>
                                                         <span class="badge badge-warning"><?php echo $row->name_match_score; ?>%</span>
@@ -168,9 +177,10 @@ ob_end_flush();
                                                     </td>
                                                     <td class="text-center">
                                                         <?php if($row->temp_image_path): ?>
-                                                            <a href="kyc-image-proxy.php?file=<?php echo urlencode($row->temp_image_path); ?>" target="_blank">
-                                                                <img src="kyc-image-proxy.php?file=<?php echo urlencode($row->temp_image_path); ?>" class="passport-thumb">
-                                                            </a>
+                                                            <div class="img-container" style="width: 120px; height: 80px; background: #f5f5f5; border: 1px dashed #ccc; border-radius: 4px; display: flex; align-items: center; justify-content: center; margin: 0 auto; flex-direction: column;">
+                                                                <i class="fa fa-lock" style="font-size: 20px; color: #aaa;"></i>
+                                                                <small style="color: #aaa; margin-top: 4px; font-size: 10px;">Provide Key</small>
+                                                            </div>
                                                         <?php else: ?>
                                                             <span class="text-muted">No Image</span>
                                                         <?php endif; ?>
@@ -226,5 +236,105 @@ $(".sidebar-icon").click(function() {
 </script>
 <script src="js/jquery.nicescroll.js"></script>
 <script src="js/scripts.js"></script>
+<script>
+document.getElementById('privateKeyFile').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+        const privateKeyPem = e.target.result;
+        try {
+            // Parse the private key
+            const privateKey = forge.pki.privateKeyFromPem(privateKeyPem);
+            
+            const rows = document.querySelectorAll('.kyc-row');
+            for (let row of rows) {
+                const encName = row.getAttribute('data-enc-name');
+                const encNum = row.getAttribute('data-enc-num');
+                const encSym = row.getAttribute('data-enc-sym');
+                const ivB64 = row.getAttribute('data-iv');
+                const imgPath = row.getAttribute('data-img-path');
+
+                // 1. Decrypt Text (Name)
+                if (encName) {
+                    try {
+                        const decodedName = forge.util.decode64(encName);
+                        // PHP default openssl_public_encrypt uses RSAES-PKCS1-v1_5
+                        row.querySelector('.dec-name').innerText = privateKey.decrypt(decodedName);
+                        row.querySelector('.dec-name').style.background = 'transparent';
+                        row.querySelector('.dec-name').style.color = '#d9534f';
+                    } catch(err) { console.error("Name decryption error", err); }
+                }
+                
+                // 2. Decrypt Text (Number)
+                if (encNum) {
+                    try {
+                        const decodedNum = forge.util.decode64(encNum);
+                        row.querySelector('.dec-num').innerText = privateKey.decrypt(decodedNum);
+                        row.querySelector('.dec-num').style.background = 'transparent';
+                        row.querySelector('.dec-num').style.color = '#333';
+                    } catch(err) { console.error("Number decryption error", err); }
+                }
+
+                // 3. Decrypt Image (Hybrid: RSA -> AES-GCM)
+                if (encSym && ivB64 && imgPath) {
+                    try {
+                        // Decrypt the AES key using RSA
+                        const decodedSym = forge.util.decode64(encSym);
+                        const aesKey = privateKey.decrypt(decodedSym);
+                        const iv = forge.util.decode64(ivB64);
+
+                        // Fetch the encrypted image blob from the server
+                        const response = await fetch('kyc-image-proxy.php?file=' + imgPath);
+                        if (!response.ok) throw new Error('Proxy returned ' + response.status);
+                        const arrayBuffer = await response.arrayBuffer();
+                        const encryptedBytes = forge.util.createBuffer(new Uint8Array(arrayBuffer));
+
+                        // AES-GCM Decryption
+                        // In PHP, tag is appended to the end (last 16 bytes)
+                        const ciphertextLen = encryptedBytes.length() - 16;
+                        const ciphertext = forge.util.createBuffer(encryptedBytes.getBytes(ciphertextLen));
+                        const tag = forge.util.createBuffer(encryptedBytes.getBytes(16));
+
+                        const decipher = forge.cipher.createDecipher('AES-GCM', aesKey);
+                        decipher.start({ iv: iv, tag: tag });
+                        decipher.update(ciphertext);
+                        const pass = decipher.finish();
+
+                        if (pass) {
+                            // Convert forge buffer to Blob
+                            const rawOutput = decipher.output.getBytes();
+                            const uint8 = new Uint8Array(rawOutput.length);
+                            for (let i = 0; i < rawOutput.length; i++) {
+                                uint8[i] = rawOutput.charCodeAt(i);
+                            }
+                            
+                            const blob = new Blob([uint8], { type: 'image/jpeg' });
+                            const url = URL.createObjectURL(blob);
+                            
+                            // Render image safely without base64 bloat
+                            const container = row.querySelector('.img-container');
+                            container.innerHTML = `<a href="${url}" target="_blank"><img src="${url}" class="passport-thumb"></a>`;
+                            container.style.background = 'transparent';
+                            container.style.border = 'none';
+                        }
+                    } catch(err) {
+                        console.error('Image decryption failed', err);
+                    }
+                }
+            }
+
+            // Wipe private key from file input (security)
+            document.getElementById('privateKeyFile').value = '';
+
+        } catch(err) {
+            console.error(err);
+            alert("Invalid Private Key file! Could not parse.");
+        }
+    };
+    reader.readAsText(file);
+});
+</script>
 </body>
 </html>
