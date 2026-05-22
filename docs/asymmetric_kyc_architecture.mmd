@@ -1,0 +1,54 @@
+sequenceDiagram
+    participant User as User
+    participant Server as Server (PHP)
+    participant DB as Database
+    participant Admin as Admin Browser
+    participant Local as Admin Local Machine
+
+    %% Configuration Phase
+    Note over Admin,Server: Configuration Phase
+    Local->>Local: Generate RSA Key Pair (Public & Private)
+    Local->>Server: Upload public_key.pem
+    Note over Server: Server stores public_key.pem
+
+    %% Upload Phase
+    Note over User,DB: Customer KYC Submission
+    User->>Server: Submit KYC Data & Passport Image
+    
+    %% Failsafe Check
+    alt public_key.pem is missing
+        Server-->>User: Graceful Error: "System Maintenance"
+    else public_key.pem exists
+        %% Hybrid Encryption
+        Note over Server: Hybrid Encryption Process
+        Server->>Server: 1. Encrypt Text (Name, DOB) with RSA Public Key
+        Server->>Server: 2. Generate Random 256-bit AES Key & IV
+        Server->>Server: 3. Encrypt Passport Image with AES Key
+        Server->>Server: 4. Encrypt AES Key with RSA Public Key
+        Server->>Server: 5. Delete Plaintext Image from Disk
+        
+        %% Storage
+        Server->>DB: Store RSA-Encrypted Text
+        Server->>DB: Store RSA-Encrypted AES Key + IV
+        Server->>Server: Store AES-Encrypted Image File
+        Server-->>User: "Pending Admin Review"
+    end
+
+    %% Review Phase
+    Note over Admin,DB: Admin Review Phase (Zero-Knowledge)
+    Admin->>Server: Request Pending KYC Records
+    Server->>DB: Fetch Encrypted Records
+    DB-->>Server: Encrypted Records
+    Server-->>Admin: Return Encrypted Base64 Data & Encrypted Image Paths
+    
+    Note over Admin: UI shows [Encrypted Data] masks
+    
+    Admin->>Local: Select private_key.pem (File Picker)
+    Note over Admin: Client-Side Decryption (Javascript)
+    Local-->>Admin: Read private_key.pem locally
+    Admin->>Admin: 1. Decrypt Text with RSA Private Key
+    Admin->>Admin: 2. Decrypt AES Key with RSA Private Key
+    Admin->>Admin: 3. Fetch Encrypted Image Blob
+    Admin->>Admin: 4. Decrypt Image Blob using AES Key
+    Admin->>Admin: 5. Render Blob URL in Browser
+    Note over Admin: Admin views plaintext data. Private key never leaves browser.
