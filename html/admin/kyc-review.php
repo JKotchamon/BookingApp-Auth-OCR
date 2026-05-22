@@ -214,7 +214,7 @@ ob_end_flush();
                                                 <tr>
                                                     <th>User (OAuth)</th>
                                                     <th>Passport Details</th>
-                                                    <th style="width: 200px; text-align: center;">Required Key Fingerprint</th>
+                                                    <th style="width: 320px; text-align: center;">Required Key Fingerprint</th>
                                                     <th>Match Score</th>
                                                     <th>Flag Reason</th>
                                                     <th>Document</th>
@@ -234,6 +234,9 @@ ob_end_flush();
                                                 if($query->rowCount() > 0) {
                                                     foreach($results as $row) {
                                                         $rowFingerprint = $row->key_fingerprint ?: $legacyFP;
+                                                        if (empty($rowFingerprint) && !empty($serverKeys)) {
+                                                            $rowFingerprint = array_key_first($serverKeys);
+                                                        }
                                                         ?>
                                                 <tr class="kyc-row" 
                                                     data-enc-name="<?php echo htmlentities($row->full_name_encrypted); ?>" 
@@ -250,17 +253,25 @@ ob_end_flush();
                                                         Name: <code class="dec-name" style="color:#666; background:#eee; padding:2px 5px;">[Encrypted Data]</code><br>
                                                         Doc#: <code class="dec-num" style="color:#666; background:#eee; padding:2px 5px;">[Encrypted Data]</code>
                                                     </td>
-                                                     <td style="text-align: center; vertical-align: middle;">
-                                                         <?php if ($rowFingerprint): ?>
-                                                             <div style="display: inline-flex; align-items: center; gap: 6px; justify-content: center;">
-                                                                 <span class="fingerprint-label" title="<?php echo htmlentities($rowFingerprint); ?>" style="font-family: 'Courier New', Courier, monospace; font-weight: bold; background: #f8f9fc; border: 1px solid #eaecf4; color: #4e73df; padding: 4px 8px; border-radius: 6px; font-size: 12px; display: inline-block; white-space: nowrap;">
+                                                     <td style="text-align: center; vertical-align: middle; min-width: 320px;">
+                                                         <?php if ($rowFingerprint): 
+                                                             $keyName = 'Unknown Key';
+                                                             if (isset($serverKeys[$rowFingerprint])) {
+                                                                 $keyName = $serverKeys[$rowFingerprint]['name'];
+                                                             } else {
+                                                                 $keyName = 'Public Key (' . substr($rowFingerprint, 0, 8) . ')';
+                                                             }
+                                                         ?>
+                                                             <div style="display: inline-flex; align-items: center; gap: 8px; justify-content: center; background: #f8f9fc; border: 1px solid #eaecf4; padding: 6px 12px; border-radius: 6px;">
+                                                                 <span class="fingerprint-label" title="<?php echo htmlentities($rowFingerprint); ?>" style="font-family: 'Courier New', Courier, monospace; font-weight: bold; color: #4e73df; font-size: 11px; display: inline-block; text-align: left; word-break: break-all;">
                                                                      <i class="fa fa-key" style="margin-right: 4px; color: #f39c12;"></i>
-                                                                     <?php echo substr($rowFingerprint, 0, 12) . '...'; ?>
+                                                                     <strong><?php echo htmlentities($keyName); ?></strong> - 
+                                                                     <span style="color: #666; font-weight: normal;"><?php echo htmlentities($rowFingerprint); ?></span>
                                                                      <?php if (empty($row->key_fingerprint) && !empty($legacyFP)): ?>
                                                                          <br><span style="font-size: 9px; color: #858796; font-weight: normal; text-transform: uppercase; display: block; margin-top: 2px;">Legacy Key</span>
                                                                      <?php endif; ?>
                                                                  </span>
-                                                                 <button class="btn btn-default btn-xs" style="padding: 3px 6px; font-size: 10px; border-color: #ddd; background: #fff;" onclick="copyFingerprint('<?php echo $rowFingerprint; ?>')" title="Copy required key fingerprint">
+                                                                 <button class="btn btn-default btn-xs" style="padding: 3px 6px; font-size: 10px; border-color: #ddd; background: #fff; flex-shrink: 0;" onclick="copyFingerprint('<?php echo $rowFingerprint; ?>')" title="Copy required key fingerprint">
                                                                      <i class="fa fa-copy" style="color: #4e73df;"></i>
                                                                  </button>
                                                              </div>
