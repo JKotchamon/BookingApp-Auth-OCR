@@ -155,7 +155,7 @@ function checkpass() {
 
                                 <br>
                                 <input type="submit" name="set_password" value="Save Password" 
-                                       style="background:#2563eb; color:#fff; border:0; padding:12px 22px; border-radius:6px; font-weight:600; cursor:pointer;">
+                                       style="background:#111; color:#fff; border:0; padding:12px 24px; font-weight:600; cursor:pointer; min-width: 160px; width: auto;">
                             </form>
                         </div>
                     </div>
