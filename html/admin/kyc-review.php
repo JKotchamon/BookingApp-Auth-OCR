@@ -119,6 +119,8 @@ ob_end_flush();
                         </div>
                         <?php endif; ?>
 
+                        <div id="decryptionStatusContainer"></div>
+
                         <div class="panel panel-widget forms-panel">
                             <div class="forms">
                                 <div class="form-grids widget-shadow"> 
@@ -160,14 +162,21 @@ ob_end_flush();
                                                     data-enc-num="<?php echo htmlentities($row->document_number_enc); ?>"
                                                     data-enc-sym="<?php echo htmlentities($row->symmetric_key_enc); ?>"
                                                     data-iv="<?php echo htmlentities($row->iv); ?>"
-                                                    data-img-path="<?php echo urlencode($row->temp_image_path); ?>">
+                                                    data-img-path="<?php echo urlencode($row->temp_image_path); ?>"
+                                                    data-key-fingerprint="<?php echo htmlentities($row->key_fingerprint ?? ''); ?>">
                                                     <td>
                                                         <strong><?php echo htmlentities($row->OAuthName); ?></strong><br>
                                                         <small><?php echo htmlentities($row->Email); ?></small>
                                                     </td>
                                                     <td>
                                                         Name: <code class="dec-name" style="color:#666; background:#eee; padding:2px 5px;">[Encrypted Data]</code><br>
-                                                        Doc#: <code class="dec-num" style="color:#666; background:#eee; padding:2px 5px;">[Encrypted Data]</code>
+                                                        Doc#: <code class="dec-num" style="color:#666; background:#eee; padding:2px 5px;">[Encrypted Data]</code><br>
+                                                        <small class="text-muted" style="display: block; margin-top: 4px;">
+                                                            <i class="fa fa-key"></i> Key Fingerprint: 
+                                                            <span class="fingerprint-label" title="<?php echo htmlentities($row->key_fingerprint); ?>" style="font-family: monospace; font-weight: bold; background: #e9ecef; padding: 1px 4px; border-radius: 3px;">
+                                                                <?php echo $row->key_fingerprint ? substr($row->key_fingerprint, 0, 12) . '...' : 'Legacy Key'; ?>
+                                                            </span>
+                                                        </small>
                                                     </td>
                                                     <td>
                                                         <span class="badge badge-warning"><?php echo $row->name_match_score; ?>%</span>
@@ -248,23 +257,54 @@ document.getElementById('privateKeyFile').addEventListener('change', function(e)
             // Parse the private key
             const privateKey = forge.pki.privateKeyFromPem(privateKeyPem);
             
+            // Derive public key parameters and compute fingerprint
+            const publicKey = forge.pki.setRsaPublicKey(privateKey.n, privateKey.e);
+            const publicKeyPem = forge.pki.publicKeyToPem(publicKey);
+            const base64 = publicKeyPem.replace(/-----(BEGIN|END) (RSA )?PUBLIC KEY-----/g, '')
+                                        .replace(/\s+/g, '');
+            const md = forge.md.sha256.create();
+            md.update(base64);
+            const computedFingerprint = md.digest().toHex();
+            
+            console.log("Uploaded Private Key Public Fingerprint:", computedFingerprint);
+
+            let decryptedCount = 0;
+            let skippedCount = 0;
+            let failedCount = 0;
+            const uniqueSkippedFingerprints = new Set();
+
             const rows = document.querySelectorAll('.kyc-row');
             for (let row of rows) {
+                const rowFingerprint = row.getAttribute('data-key-fingerprint');
                 const encName = row.getAttribute('data-enc-name');
                 const encNum = row.getAttribute('data-enc-num');
                 const encSym = row.getAttribute('data-enc-sym');
                 const ivB64 = row.getAttribute('data-iv');
                 const imgPath = row.getAttribute('data-img-path');
 
+                // Skip if fingerprint exists and doesn't match
+                if (rowFingerprint && rowFingerprint !== computedFingerprint) {
+                    skippedCount++;
+                    uniqueSkippedFingerprints.add(rowFingerprint ? rowFingerprint.substring(0, 12) + '...' : 'Legacy');
+                    continue;
+                }
+
+                let rowDecrypted = false;
+
                 // 1. Decrypt Text (Name)
                 if (encName) {
                     try {
                         const decodedName = forge.util.decode64(encName);
-                        // PHP default openssl_public_encrypt uses RSAES-PKCS1-v1_5
                         row.querySelector('.dec-name').innerText = privateKey.decrypt(decodedName);
                         row.querySelector('.dec-name').style.background = 'transparent';
-                        row.querySelector('.dec-name').style.color = '#d9534f';
-                    } catch(err) { console.error("Name decryption error", err); }
+                        row.querySelector('.dec-name').style.color = '#28a745';
+                        row.querySelector('.dec-name').style.fontWeight = 'bold';
+                        rowDecrypted = true;
+                    } catch(err) { 
+                        console.error("Name decryption error", err); 
+                        failedCount++;
+                        continue;
+                    }
                 }
                 
                 // 2. Decrypt Text (Number)
@@ -274,7 +314,13 @@ document.getElementById('privateKeyFile').addEventListener('change', function(e)
                         row.querySelector('.dec-num').innerText = privateKey.decrypt(decodedNum);
                         row.querySelector('.dec-num').style.background = 'transparent';
                         row.querySelector('.dec-num').style.color = '#333';
-                    } catch(err) { console.error("Number decryption error", err); }
+                        row.querySelector('.dec-num').style.fontWeight = 'bold';
+                        rowDecrypted = true;
+                    } catch(err) { 
+                        console.error("Number decryption error", err); 
+                        failedCount++;
+                        continue;
+                    }
                 }
 
                 // 3. Decrypt Image (Hybrid: RSA -> AES-GCM)
@@ -292,7 +338,6 @@ document.getElementById('privateKeyFile').addEventListener('change', function(e)
                         const encryptedBytes = forge.util.createBuffer(new Uint8Array(arrayBuffer));
 
                         // AES-GCM Decryption
-                        // In PHP, tag is appended to the end (last 16 bytes)
                         const ciphertextLen = encryptedBytes.length() - 16;
                         const ciphertext = forge.util.createBuffer(encryptedBytes.getBytes(ciphertextLen));
                         const tag = forge.util.createBuffer(encryptedBytes.getBytes(16));
@@ -303,7 +348,6 @@ document.getElementById('privateKeyFile').addEventListener('change', function(e)
                         const pass = decipher.finish();
 
                         if (pass) {
-                            // Convert forge buffer to Blob
                             const rawOutput = decipher.output.getBytes();
                             const uint8 = new Uint8Array(rawOutput.length);
                             for (let i = 0; i < rawOutput.length; i++) {
@@ -313,7 +357,6 @@ document.getElementById('privateKeyFile').addEventListener('change', function(e)
                             const blob = new Blob([uint8], { type: 'image/jpeg' });
                             const url = URL.createObjectURL(blob);
                             
-                            // Render image safely without base64 bloat
                             const container = row.querySelector('.img-container');
                             container.innerHTML = `<a href="${url}" target="_blank"><img src="${url}" class="passport-thumb"></a>`;
                             container.style.background = 'transparent';
@@ -323,14 +366,55 @@ document.getElementById('privateKeyFile').addEventListener('change', function(e)
                         console.error('Image decryption failed', err);
                     }
                 }
+
+                if (rowDecrypted) {
+                    decryptedCount++;
+                }
             }
+
+            // Render status notification
+            let statusHtml = `
+                <div class="alert alert-success alert-dismissible" role="alert" style="margin-top: 15px;">
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <strong><i class="fa fa-unlock"></i> Key Applied:</strong> Successfully decrypted <strong>\${decryptedCount}</strong> record(s) matching public key fingerprint <code style="font-size: 11px;">\${computedFingerprint.substring(0, 16)}...</code>
+                </div>
+            `;
+
+            if (skippedCount > 0) {
+                const skippedFpList = Array.from(uniqueSkippedFingerprints).join(', ');
+                statusHtml += `
+                    <div class="alert alert-warning alert-dismissible" role="alert" style="margin-top: 10px;">
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        <strong><i class="fa fa-exclamation-triangle"></i> Locked Records:</strong> <strong>\${skippedCount}</strong> record(s) were skipped because they require a different private key (Fingerprints: <code>\${skippedFpList}</code>).
+                    </div>
+                `;
+            }
+
+            if (failedCount > 0) {
+                statusHtml += `
+                    <div class="alert alert-danger alert-dismissible" role="alert" style="margin-top: 10px;">
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        <strong><i class="fa fa-times-circle"></i> Decryption Failed:</strong> Failed to decrypt <strong>\${failedCount}</strong> legacy/corrupted record(s) with this key.
+                    </div>
+                `;
+            }
+
+            // Inject the status container
+            let statusContainer = document.getElementById('decryptionStatusContainer');
+            if (!statusContainer) {
+                statusContainer = document.createElement('div');
+                statusContainer.id = 'decryptionStatusContainer';
+                const parent = document.querySelector('.progressbar-heading');
+                parent.after(statusContainer);
+            }
+            statusContainer.innerHTML = statusHtml;
 
             // Wipe private key from file input (security)
             document.getElementById('privateKeyFile').value = '';
 
         } catch(err) {
             console.error(err);
-            alert("Invalid Private Key file! Could not parse.");
+            alert("Invalid Private Key file! Could not parse. Please ensure it's a valid RSA Private Key in PEM format.");
         }
     };
     reader.readAsText(file);

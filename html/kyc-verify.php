@@ -80,6 +80,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['passport'])) {
                             $dobEnc    = encryptTextRSA($ocrData['dob'] ?? '');
                             $numEnc    = encryptTextRSA($ocrData['passport_number']);
                             $blindHash = computeBlindIndex($ocrData['passport_number']);
+                            $activeFingerprint = getActivePublicKeyFingerprint();
 
                             $vq = $dbh->prepare('SELECT MAX(version) FROM tbl_kyc_records WHERE user_id=:uid');
                             $vq->execute([':uid' => $uid]);
@@ -90,20 +91,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['passport'])) {
 
                             $logSql = "INSERT INTO tbl_kyc_records (user_id,version,is_current,verification_status,
                                        full_name_encrypted,date_of_birth_enc,document_number_enc,
-                                       document_number_hash,nationality,expiry_date,rejection_reason,temp_image_path,symmetric_key_enc,iv)
-                                       VALUES (:uid,:ver,1,:st,:pne,:dobe,:numenc,:hash,:nat,:exp,:md,:ipath,NULL,NULL)";
+                                       document_number_hash,nationality,expiry_date,rejection_reason,temp_image_path,symmetric_key_enc,iv,key_fingerprint)
+                                       VALUES (:uid,:ver,1,:st,:pne,:dobe,:numenc,:hash,:nat,:exp,:md,:ipath,NULL,NULL,:fingerprint)";
                             $dbh->prepare($logSql)->execute([
-                                ':uid'    => $uid,
-                                ':ver'    => $ver,
-                                ':st'     => 'pending',
-                                ':pne'    => $nameEnc,
-                                ':dobe'   => $dobEnc,
-                                ':numenc' => $numEnc,
-                                ':hash'   => $blindHash,
-                                ':nat'    => trim($ocrData['nationality'] ?? ''),
-                                ':exp'    => !empty($ocrData['expiry_date']) ? $ocrData['expiry_date'] : null,
-                                ':md'     => 'FLAGGED: Duplicate passport number detected. Requires manual investigation.',
-                                ':ipath'  => $tempName,
+                                ':uid'         => $uid,
+                                ':ver'         => $ver,
+                                ':st'          => 'pending',
+                                ':pne'         => $nameEnc,
+                                ':dobe'        => $dobEnc,
+                                ':numenc'      => $numEnc,
+                                ':hash'        => $blindHash,
+                                ':nat'         => trim($ocrData['nationality'] ?? ''),
+                                ':exp'         => !empty($ocrData['expiry_date']) ? $ocrData['expiry_date'] : null,
+                                ':md'          => 'FLAGGED: Duplicate passport number detected. Requires manual investigation.',
+                                ':ipath'       => $tempName,
+                                ':fingerprint' => $activeFingerprint,
                             ]);
 
                             $dbh->prepare("UPDATE tbluser SET kyc_status='pending' WHERE ID=:uid")
