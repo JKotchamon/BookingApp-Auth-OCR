@@ -98,6 +98,30 @@ ob_end_flush();
 <style>
     .passport-thumb { max-width: 150px; border: 1px solid #ddd; padding: 2px; }
     .alert-top { margin: 15px 0; }
+    .copy-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #f1f5f9;
+        border: 1px solid #cbd5e1;
+        color: #475569;
+        border-radius: 6px;
+        padding: 4px 8px;
+        font-size: 11px;
+        cursor: pointer;
+        transition: background 0.2s, color 0.2s, transform 0.15s;
+        flex-shrink: 0;
+        line-height: 1;
+    }
+    .copy-btn:hover {
+        background: #1e293b;
+        color: #ffffff;
+        border-color: #1e293b;
+        transform: scale(1.08);
+    }
+    .copy-btn:active {
+        transform: scale(0.97);
+    }
 </style>
 </head> 
 <body>
@@ -198,8 +222,8 @@ ob_end_flush();
                                                             </div>
                                                             <div style="display: flex; align-items: center; gap: 6px; width: 100%;">
                                                                 <code style="font-size: 11px; font-family: 'Courier New', Courier, monospace; background: #f8fafc; border: 1px solid #e2e8f0; color: #334155; padding: 3px 8px; border-radius: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-grow: 1;" title="<?php echo $fp; ?>"><?php echo $fp; ?></code>
-                                                                <button class="btn btn-default btn-xs" style="padding: 3px 6px; font-size: 10px; border-color: #cbd5e1;" onclick="copyFingerprint('<?php echo $fp; ?>')" title="Copy SHA-256 fingerprint">
-                                                                    <i class="fa fa-copy" style="color: #475569;"></i>
+                                                                <button class="copy-btn" onclick="copyFingerprint('<?php echo $fp; ?>')" title="Copy SHA-256 fingerprint">
+                                                                    <i class="fa fa-copy"></i>
                                                                 </button>
                                                             </div>
                                                         </div>
@@ -271,8 +295,8 @@ ob_end_flush();
                                                                          <br><span style="font-size: 9px; color: #64748b; font-weight: normal; text-transform: uppercase; display: block; margin-top: 2px;">Legacy Key</span>
                                                                      <?php endif; ?>
                                                                  </span>
-                                                                 <button class="btn btn-default btn-xs" style="padding: 3px 6px; font-size: 10px; border-color: #cbd5e1; background: #fff; flex-shrink: 0;" onclick="copyFingerprint('<?php echo $rowFingerprint; ?>')" title="Copy required key fingerprint">
-                                                                     <i class="fa fa-copy" style="color: #475569;"></i>
+                                                                 <button class="copy-btn" onclick="copyFingerprint('<?php echo $rowFingerprint; ?>')" title="Copy required key fingerprint">
+                                                                     <i class="fa fa-copy"></i>
                                                                  </button>
                                                              </div>
                                                          <?php else: ?>
