@@ -63,7 +63,7 @@ $query->execute();
 				<div class="contact">
 				<div class="container">
 					
-					<h2>View Your Profile !!!!!!</h2>
+					<h2 style="margin-bottom: 30px;">View Your Profile</h2>
 					
 				<div class="contact-grids">
 					
@@ -121,9 +121,11 @@ foreach($results as $row) { $result = $row; ?>
                                 </div>
                             </div>
                         </div>
-                        <a href="kyc-status.php" class="btn btn-sm" style="background: #f8f9fa; border: 1px solid #ddd; border-radius: 20px; padding: 5px 15px; color: #555; font-weight: 600;">
-                            <?php echo ($row->kyc_status === 'verified') ? 'View Details' : 'Verify Now'; ?>
-                        </a>
+                        <?php if ($row->kyc_status !== 'verified'): ?>
+                            <a href="kyc-status.php" class="btn btn-sm" style="background: #f8f9fa; border: 1px solid #ddd; border-radius: 20px; padding: 5px 15px; color: #555; font-weight: 600;">
+                                Verify Now
+                            </a>
+                        <?php endif; ?>
                     </div>
 
                     <!-- Connected Accounts Section -->
