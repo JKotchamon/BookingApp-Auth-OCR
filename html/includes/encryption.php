@@ -10,14 +10,83 @@
 /**
  * Gets the RSA Public Key from the server folder.
  * 
+ * @param string|null $fingerprint Optional specific fingerprint to load.
  * @return string|false The public key file contents, or false if not found.
  */
-function getPublicKey() {
-    $keyPath = __DIR__ . '/../keys/kyc_public_key.pem';
-    if (file_exists($keyPath)) {
-        return file_get_contents($keyPath);
+function getPublicKey($fingerprint = null) {
+    if ($fingerprint === null) {
+        $fingerprint = getActiveFingerprint();
+    }
+    
+    if (!empty($fingerprint)) {
+        $keyPath = __DIR__ . '/../keys/pubkey_' . $fingerprint . '.pem';
+        if (file_exists($keyPath)) {
+            return file_get_contents($keyPath);
+        }
+    }
+    
+    // Fallback to legacy key
+    $legacyPath = __DIR__ . '/../keys/kyc_public_key.pem';
+    if (file_exists($legacyPath)) {
+        return file_get_contents($legacyPath);
     }
     return false;
+}
+
+/**
+ * Reads the active public key fingerprint from keys/active_fingerprint.txt.
+ * 
+ * @return string|null The active fingerprint, or null if not set.
+ */
+function getActiveFingerprint() {
+    $activePath = __DIR__ . '/../keys/active_fingerprint.txt';
+    if (file_exists($activePath)) {
+        return trim(file_get_contents($activePath));
+    }
+    return null;
+}
+
+/**
+ * Computes a deterministic SHA-256 fingerprint for a public key PEM.
+ * 
+ * @param string $pubKeyPEM The public key PEM string.
+ * @return string The 64-character lowercase hex SHA-256 fingerprint.
+ */
+function getPublicKeyFingerprint($pubKeyPEM) {
+    if (empty($pubKeyPEM)) return '';
+    // Normalize PEM content by stripping headers, footers and all white space
+    $base64 = str_replace(
+        [
+            '-----BEGIN PUBLIC KEY-----',
+            '-----END PUBLIC KEY-----',
+            '-----BEGIN RSA PUBLIC KEY-----',
+            '-----END RSA PUBLIC KEY-----',
+            "\r", "\n", ' ', "\t"
+        ],
+        '',
+        $pubKeyPEM
+    );
+    return hash('sha256', $base64);
+}
+
+/**
+ * Gets the active public key's fingerprint.
+ * 
+ * @return string|null The active key fingerprint, or null if no keys.
+ */
+function getActivePublicKeyFingerprint() {
+    $active = getActiveFingerprint();
+    if (!empty($active)) {
+        if (file_exists(__DIR__ . '/../keys/pubkey_' . $active . '.pem')) {
+            return $active;
+        }
+    }
+    
+    $pubKey = getPublicKey(null);
+    if ($pubKey) {
+        return getPublicKeyFingerprint($pubKey);
+    }
+    return null;
 }
 
 /**

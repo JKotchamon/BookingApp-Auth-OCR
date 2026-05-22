@@ -157,28 +157,31 @@ $ver = (int)($vq->fetchColumn() ?? 0) + 1;
 $dbh->prepare('UPDATE tbl_kyc_records SET is_current=0 WHERE user_id=:uid')
     ->execute([':uid' => $uid]);
 
+$activeFingerprint = getActivePublicKeyFingerprint();
+
 // 9. Insert new versioned row
 $log = $dbh->prepare(
     'INSERT INTO tbl_kyc_records (user_id,version,is_current,verification_status,
         full_name_encrypted,date_of_birth_enc,document_number_enc,
-        document_number_hash,nationality,expiry_date,name_match_score,rejection_reason,temp_image_path,symmetric_key_enc,iv)
-     VALUES (:uid,:ver,1,:st,:pne,:dobe,:numenc,:hash,:nat,:exp,:score,:md,:ipath,:symkey,:iv)'
+        document_number_hash,nationality,expiry_date,name_match_score,rejection_reason,temp_image_path,symmetric_key_enc,iv,key_fingerprint)
+     VALUES (:uid,:ver,1,:st,:pne,:dobe,:numenc,:hash,:nat,:exp,:score,:md,:ipath,:symkey,:iv,:fingerprint)'
 );
 $log->execute([
-    ':uid'    => $uid,
-    ':ver'    => $ver,
-    ':st'     => $newStatus,
-    ':pne'    => $nameEnc,
-    ':dobe'   => $dobEnc,
-    ':numenc' => $numEnc,
-    ':hash'   => $blindHash,
-    ':nat'    => $nationality,
-    ':exp'    => !empty($expiryDate) ? $expiryDate : null,
-    ':score'  => $matchScore,
-    ':md'     => $mismatch,
-    ':ipath'  => $finalImagePath,
-    ':symkey' => $symmetricKeyEnc,
-    ':iv'     => $ivEnc
+    ':uid'         => $uid,
+    ':ver'         => $ver,
+    ':st'          => $newStatus,
+    ':pne'         => $nameEnc,
+    ':dobe'        => $dobEnc,
+    ':numenc'      => $numEnc,
+    ':hash'        => $blindHash,
+    ':nat'         => $nationality,
+    ':exp'         => !empty($expiryDate) ? $expiryDate : null,
+    ':score'       => $matchScore,
+    ':md'          => $mismatch,
+    ':ipath'       => $finalImagePath,
+    ':symkey'      => $symmetricKeyEnc,
+    ':iv'          => $ivEnc,
+    ':fingerprint' => $activeFingerprint
 ]);
 
 // 10. Audit Log

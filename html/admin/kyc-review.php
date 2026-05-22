@@ -98,6 +98,30 @@ ob_end_flush();
 <style>
     .passport-thumb { max-width: 150px; border: 1px solid #ddd; padding: 2px; }
     .alert-top { margin: 15px 0; }
+    .copy-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #f1f5f9;
+        border: 1px solid #cbd5e1;
+        color: #475569;
+        border-radius: 6px;
+        padding: 4px 8px;
+        font-size: 11px;
+        cursor: pointer;
+        transition: background 0.2s, color 0.2s, transform 0.15s;
+        flex-shrink: 0;
+        line-height: 1;
+    }
+    .copy-btn:hover {
+        background: #1e293b;
+        color: #ffffff;
+        border-color: #1e293b;
+        transform: scale(1.08);
+    }
+    .copy-btn:active {
+        transform: scale(0.97);
+    }
 </style>
 </head> 
 <body>
@@ -119,6 +143,8 @@ ob_end_flush();
                         </div>
                         <?php endif; ?>
 
+                        <div id="decryptionStatusContainer"></div>
+
                         <div class="panel panel-widget forms-panel">
                             <div class="forms">
                                 <div class="form-grids widget-shadow"> 
@@ -131,11 +157,88 @@ ob_end_flush();
                                         </div>
                                     </div>
                                     <div class="form-body">
+                                        <?php
+                                        // Gather all public keys on the server
+                                        $activeFingerprint = getActivePublicKeyFingerprint();
+                                        $serverKeys = [];
+
+                                        // Check legacy key
+                                        $legacyPath = __DIR__ . '/../keys/kyc_public_key.pem';
+                                        $legacyFP = '';
+                                        if (file_exists($legacyPath)) {
+                                            $content = file_get_contents($legacyPath);
+                                            $legacyFP = getPublicKeyFingerprint($content);
+                                            $serverKeys[$legacyFP] = [
+                                                'name' => 'Legacy Key',
+                                                'fingerprint' => $legacyFP,
+                                                'is_active' => (!empty($activeFingerprint) && $activeFingerprint === $legacyFP)
+                                            ];
+                                        }
+
+                                        // Check other keys
+                                        $otherKeys = glob(__DIR__ . '/../keys/pubkey_*.pem');
+                                        foreach ($otherKeys as $path) {
+                                            $content = file_get_contents($path);
+                                            $fp = getPublicKeyFingerprint($content);
+                                            if (isset($serverKeys[$fp])) {
+                                                continue;
+                                            }
+                                            $serverKeys[$fp] = [
+                                                'name' => 'Public Key (' . substr($fp, 0, 8) . ')',
+                                                'fingerprint' => $fp,
+                                                'is_active' => ($activeFingerprint === $fp)
+                                            ];
+                                        }
+                                        ?>
+                                        <?php if (!empty($serverKeys)): ?>
+                                        <!-- Server Registered Keys Reference Widget -->
+                                        <div style="margin-bottom: 20px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                                            <div id="toggleKeysHeader" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 12px 18px; user-select: none;" onclick="toggleKeysReference()">
+                                                <span style="font-weight: bold; color: #1e293b; font-size: 14px;">
+                                                    <i class="fa fa-info-circle" style="color: #1e293b; margin-right: 5px;"></i> 
+                                                    Registered Server Keys Reference (Active Fingerprints)
+                                                </span>
+                                                <span id="keysToggleIcon" style="color: #1e293b; font-size: 12px; font-weight: bold;">
+                                                    <i class="fa fa-chevron-down"></i> Show Registered Keys
+                                                </span>
+                                            </div>
+                                            <div id="keysReferenceBody" style="display: none; border-top: 1px dashed #cbd5e1; padding: 15px 18px; background: #ffffff; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;">
+                                                <p style="font-size: 12px; color: #64748b; margin-bottom: 12px; line-height: 1.5;">
+                                                    Below are the public keys currently uploaded to the server. Match the required fingerprint shown in the table to one of the keys below to know which private key file you need to upload for decryption.
+                                                </p>
+                                                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px;">
+                                                    <?php foreach ($serverKeys as $fp => $kData): ?>
+                                                        <div style="background: #fdfdfd; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 14px; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,0.01); display: flex; flex-direction: column; justify-content: space-between; transition: all 0.2s ease-in-out;">
+                                                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
+                                                                <strong style="font-size: 12px; color: #0f172a;">
+                                                                    <i class="fa fa-key" style="color: #cbd5e1; margin-right: 4px;"></i>
+                                                                    <?php echo htmlentities($kData['name']); ?>
+                                                                </strong>
+                                                                <?php if ($kData['is_active']): ?>
+                                                                    <span style="background: #e5fbe5; border: 1px solid #c3f2c3; color: #155724; font-size: 9px; font-weight: bold; padding: 2px 6px; border-radius: 10px; text-transform: uppercase; letter-spacing: 0.5px;">
+                                                                        Active
+                                                                    </span>
+                                                                <?php endif; ?>
+                                                            </div>
+                                                            <div style="display: flex; align-items: center; gap: 6px; width: 100%;">
+                                                                <code style="font-size: 11px; font-family: 'Courier New', Courier, monospace; background: #f8fafc; border: 1px solid #e2e8f0; color: #334155; padding: 3px 8px; border-radius: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-grow: 1;" title="<?php echo $fp; ?>"><?php echo $fp; ?></code>
+                                                                <button class="copy-btn" onclick="copyFingerprint('<?php echo $fp; ?>')" title="Copy SHA-256 fingerprint">
+                                                                    <i class="fa fa-copy"></i>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    <?php endforeach; ?>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <?php endif; ?>
+
                                         <table class="table table-bordered table-striped">
                                             <thead>
                                                 <tr>
                                                     <th>User (OAuth)</th>
                                                     <th>Passport Details</th>
+                                                    <th style="width: 320px; text-align: center;">Required Key Fingerprint</th>
                                                     <th>Match Score</th>
                                                     <th>Flag Reason</th>
                                                     <th>Document</th>
@@ -154,13 +257,18 @@ ob_end_flush();
 
                                                 if($query->rowCount() > 0) {
                                                     foreach($results as $row) {
+                                                        $rowFingerprint = $row->key_fingerprint ?: $legacyFP;
+                                                        if (empty($rowFingerprint) && !empty($serverKeys)) {
+                                                            $rowFingerprint = array_key_first($serverKeys);
+                                                        }
                                                         ?>
                                                 <tr class="kyc-row" 
                                                     data-enc-name="<?php echo htmlentities($row->full_name_encrypted); ?>" 
                                                     data-enc-num="<?php echo htmlentities($row->document_number_enc); ?>"
                                                     data-enc-sym="<?php echo htmlentities($row->symmetric_key_enc); ?>"
                                                     data-iv="<?php echo htmlentities($row->iv); ?>"
-                                                    data-img-path="<?php echo urlencode($row->temp_image_path); ?>">
+                                                    data-img-path="<?php echo urlencode($row->temp_image_path); ?>"
+                                                    data-key-fingerprint="<?php echo htmlentities($rowFingerprint); ?>">
                                                     <td>
                                                         <strong><?php echo htmlentities($row->OAuthName); ?></strong><br>
                                                         <small><?php echo htmlentities($row->Email); ?></small>
@@ -169,6 +277,32 @@ ob_end_flush();
                                                         Name: <code class="dec-name" style="color:#666; background:#eee; padding:2px 5px;">[Encrypted Data]</code><br>
                                                         Doc#: <code class="dec-num" style="color:#666; background:#eee; padding:2px 5px;">[Encrypted Data]</code>
                                                     </td>
+                                                     <td style="text-align: center; vertical-align: middle; min-width: 320px;">
+                                                         <?php if ($rowFingerprint): 
+                                                             $keyName = 'Unknown Key';
+                                                             if (isset($serverKeys[$rowFingerprint])) {
+                                                                 $keyName = $serverKeys[$rowFingerprint]['name'];
+                                                             } else {
+                                                                 $keyName = 'Public Key (' . substr($rowFingerprint, 0, 8) . ')';
+                                                             }
+                                                         ?>
+                                                             <div style="display: inline-flex; align-items: center; gap: 8px; justify-content: center; background: #f8fafc; border: 1px solid #cbd5e1; padding: 6px 12px; border-radius: 6px;">
+                                                                 <span class="fingerprint-label" title="<?php echo htmlentities($rowFingerprint); ?>" style="font-family: 'Courier New', Courier, monospace; font-weight: bold; color: #334155; font-size: 11px; display: inline-block; text-align: left; word-break: break-all;">
+                                                                     <i class="fa fa-key" style="margin-right: 4px; color: #475569;"></i>
+                                                                     <strong><?php echo htmlentities($keyName); ?></strong> - 
+                                                                     <span style="color: #64748b; font-weight: normal;"><?php echo htmlentities($rowFingerprint); ?></span>
+                                                                     <?php if (empty($row->key_fingerprint) && !empty($legacyFP)): ?>
+                                                                         <br><span style="font-size: 9px; color: #64748b; font-weight: normal; text-transform: uppercase; display: block; margin-top: 2px;">Legacy Key</span>
+                                                                     <?php endif; ?>
+                                                                 </span>
+                                                                 <button class="copy-btn" onclick="copyFingerprint('<?php echo $rowFingerprint; ?>')" title="Copy required key fingerprint">
+                                                                     <i class="fa fa-copy"></i>
+                                                                 </button>
+                                                             </div>
+                                                         <?php else: ?>
+                                                             <span class="text-muted" style="font-size: 12px; font-style: italic;">No Key</span>
+                                                         <?php endif; ?>
+                                                     </td>
                                                     <td>
                                                         <span class="badge badge-warning"><?php echo $row->name_match_score; ?>%</span>
                                                     </td>
@@ -201,7 +335,7 @@ ob_end_flush();
                                                 </tr>
                                                 <?php } } else { ?>
                                                 <tr>
-                                                    <td colspan="6" class="text-center">No pending verifications found.</td>
+                                                    <td colspan="7" class="text-center">No pending verifications found.</td>
                                                 </tr>
                                                 <?php } ?>
                                             </tbody>
@@ -237,6 +371,50 @@ $(".sidebar-icon").click(function() {
 <script src="js/jquery.nicescroll.js"></script>
 <script src="js/scripts.js"></script>
 <script>
+function toggleKeysReference() {
+    const body = document.getElementById('keysReferenceBody');
+    const icon = document.getElementById('keysToggleIcon');
+    if (body.style.display === 'none') {
+        body.style.display = 'block';
+        icon.innerHTML = '<i class="fa fa-chevron-up"></i> Hide Registered Keys';
+    } else {
+        body.style.display = 'none';
+        icon.innerHTML = '<i class="fa fa-chevron-down"></i> Show Registered Keys';
+    }
+}
+
+function copyFingerprint(fp) {
+    navigator.clipboard.writeText(fp).then(function() {
+        const notification = document.createElement('div');
+        notification.style.position = 'fixed';
+        notification.style.bottom = '20px';
+        notification.style.right = '20px';
+        notification.style.background = '#1e293b';
+        notification.style.color = '#fff';
+        notification.style.padding = '12px 24px';
+        notification.style.borderRadius = '8px';
+        notification.style.boxShadow = '0 4px 15px rgba(0,0,0,0.15)';
+        notification.style.fontWeight = 'bold';
+        notification.style.fontSize = '14px';
+        notification.style.zIndex = '9999';
+        notification.innerHTML = '<i class="fa fa-check-circle"></i> Fingerprint copied to clipboard!';
+        document.body.appendChild(notification);
+        setTimeout(() => {
+            notification.style.transition = 'opacity 0.5s ease';
+            notification.style.opacity = '0';
+            setTimeout(() => notification.remove(), 500);
+        }, 2500);
+    }, function() {
+        var tempInput = document.createElement("input");
+        tempInput.value = fp;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        document.execCommand("copy");
+        document.body.removeChild(tempInput);
+        alert('Fingerprint copied to clipboard!');
+    });
+}
+
 document.getElementById('privateKeyFile').addEventListener('change', function(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -248,23 +426,54 @@ document.getElementById('privateKeyFile').addEventListener('change', function(e)
             // Parse the private key
             const privateKey = forge.pki.privateKeyFromPem(privateKeyPem);
             
+            // Derive public key parameters and compute fingerprint
+            const publicKey = forge.pki.setRsaPublicKey(privateKey.n, privateKey.e);
+            const publicKeyPem = forge.pki.publicKeyToPem(publicKey);
+            const base64 = publicKeyPem.replace(/-----(BEGIN|END) (RSA )?PUBLIC KEY-----/g, '')
+                                        .replace(/\s+/g, '');
+            const md = forge.md.sha256.create();
+            md.update(base64);
+            const computedFingerprint = md.digest().toHex();
+            
+            console.log("Uploaded Private Key Public Fingerprint:", computedFingerprint);
+
+            let decryptedCount = 0;
+            let skippedCount = 0;
+            let failedCount = 0;
+            const uniqueSkippedFingerprints = new Set();
+
             const rows = document.querySelectorAll('.kyc-row');
             for (let row of rows) {
+                const rowFingerprint = row.getAttribute('data-key-fingerprint');
                 const encName = row.getAttribute('data-enc-name');
                 const encNum = row.getAttribute('data-enc-num');
                 const encSym = row.getAttribute('data-enc-sym');
                 const ivB64 = row.getAttribute('data-iv');
                 const imgPath = row.getAttribute('data-img-path');
 
+                // Skip if fingerprint exists and doesn't match
+                if (rowFingerprint && rowFingerprint !== computedFingerprint) {
+                    skippedCount++;
+                    uniqueSkippedFingerprints.add(rowFingerprint ? rowFingerprint.substring(0, 12) + '...' : 'Legacy');
+                    continue;
+                }
+
+                let rowDecrypted = false;
+
                 // 1. Decrypt Text (Name)
                 if (encName) {
                     try {
                         const decodedName = forge.util.decode64(encName);
-                        // PHP default openssl_public_encrypt uses RSAES-PKCS1-v1_5
                         row.querySelector('.dec-name').innerText = privateKey.decrypt(decodedName);
                         row.querySelector('.dec-name').style.background = 'transparent';
-                        row.querySelector('.dec-name').style.color = '#d9534f';
-                    } catch(err) { console.error("Name decryption error", err); }
+                        row.querySelector('.dec-name').style.color = '#28a745';
+                        row.querySelector('.dec-name').style.fontWeight = 'bold';
+                        rowDecrypted = true;
+                    } catch(err) { 
+                        console.error("Name decryption error", err); 
+                        failedCount++;
+                        continue;
+                    }
                 }
                 
                 // 2. Decrypt Text (Number)
@@ -274,7 +483,13 @@ document.getElementById('privateKeyFile').addEventListener('change', function(e)
                         row.querySelector('.dec-num').innerText = privateKey.decrypt(decodedNum);
                         row.querySelector('.dec-num').style.background = 'transparent';
                         row.querySelector('.dec-num').style.color = '#333';
-                    } catch(err) { console.error("Number decryption error", err); }
+                        row.querySelector('.dec-num').style.fontWeight = 'bold';
+                        rowDecrypted = true;
+                    } catch(err) { 
+                        console.error("Number decryption error", err); 
+                        failedCount++;
+                        continue;
+                    }
                 }
 
                 // 3. Decrypt Image (Hybrid: RSA -> AES-GCM)
@@ -292,7 +507,6 @@ document.getElementById('privateKeyFile').addEventListener('change', function(e)
                         const encryptedBytes = forge.util.createBuffer(new Uint8Array(arrayBuffer));
 
                         // AES-GCM Decryption
-                        // In PHP, tag is appended to the end (last 16 bytes)
                         const ciphertextLen = encryptedBytes.length() - 16;
                         const ciphertext = forge.util.createBuffer(encryptedBytes.getBytes(ciphertextLen));
                         const tag = forge.util.createBuffer(encryptedBytes.getBytes(16));
@@ -303,7 +517,6 @@ document.getElementById('privateKeyFile').addEventListener('change', function(e)
                         const pass = decipher.finish();
 
                         if (pass) {
-                            // Convert forge buffer to Blob
                             const rawOutput = decipher.output.getBytes();
                             const uint8 = new Uint8Array(rawOutput.length);
                             for (let i = 0; i < rawOutput.length; i++) {
@@ -313,7 +526,6 @@ document.getElementById('privateKeyFile').addEventListener('change', function(e)
                             const blob = new Blob([uint8], { type: 'image/jpeg' });
                             const url = URL.createObjectURL(blob);
                             
-                            // Render image safely without base64 bloat
                             const container = row.querySelector('.img-container');
                             container.innerHTML = `<a href="${url}" target="_blank"><img src="${url}" class="passport-thumb"></a>`;
                             container.style.background = 'transparent';
@@ -323,14 +535,55 @@ document.getElementById('privateKeyFile').addEventListener('change', function(e)
                         console.error('Image decryption failed', err);
                     }
                 }
+
+                if (rowDecrypted) {
+                    decryptedCount++;
+                }
             }
+
+            // Render status notification
+            let statusHtml = `
+                <div class="alert alert-success alert-dismissible" role="alert" style="margin-top: 15px;">
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <strong><i class="fa fa-unlock"></i> Key Applied:</strong> Successfully decrypted <strong>${decryptedCount}</strong> record(s) matching public key fingerprint <code style="font-size: 11px;">${computedFingerprint.substring(0, 16)}...</code>
+                </div>
+            `;
+
+            if (skippedCount > 0) {
+                const skippedFpList = Array.from(uniqueSkippedFingerprints).join(', ');
+                statusHtml += `
+                    <div class="alert alert-warning alert-dismissible" role="alert" style="margin-top: 10px;">
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        <strong><i class="fa fa-exclamation-triangle"></i> Locked Records:</strong> <strong>${skippedCount}</strong> record(s) were skipped because they require a different private key (Fingerprints: <code>${skippedFpList}</code>).
+                    </div>
+                `;
+            }
+
+            if (failedCount > 0) {
+                statusHtml += `
+                    <div class="alert alert-danger alert-dismissible" role="alert" style="margin-top: 10px;">
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        <strong><i class="fa fa-times-circle"></i> Decryption Failed:</strong> Failed to decrypt <strong>${failedCount}</strong> legacy/corrupted record(s) with this key.
+                    </div>
+                `;
+            }
+
+            // Inject the status container
+            let statusContainer = document.getElementById('decryptionStatusContainer');
+            if (!statusContainer) {
+                statusContainer = document.createElement('div');
+                statusContainer.id = 'decryptionStatusContainer';
+                const parent = document.querySelector('.progressbar-heading');
+                parent.after(statusContainer);
+            }
+            statusContainer.innerHTML = statusHtml;
 
             // Wipe private key from file input (security)
             document.getElementById('privateKeyFile').value = '';
 
         } catch(err) {
             console.error(err);
-            alert("Invalid Private Key file! Could not parse.");
+            alert("Invalid Private Key file! Could not parse. Please ensure it's a valid RSA Private Key in PEM format.");
         }
     };
     reader.readAsText(file);
