@@ -24,6 +24,14 @@ function sendToOcr($imageData, $mimeType) {
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_TIMEOUT, 30);
 
+    // Support secure HTTPS connections to OCR service by utilizing the local CA bundle if present
+    if (str_starts_with(strtolower($url), 'https://')) {
+        $cacertPath = __DIR__ . '/cacert.pem';
+        if (file_exists($cacertPath)) {
+            curl_setopt($ch, CURLOPT_CAINFO, $cacertPath);
+        }
+    }
+
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $error = curl_error($ch);

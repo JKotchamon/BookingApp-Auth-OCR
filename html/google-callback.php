@@ -7,11 +7,20 @@ require_once 'includes/dbconnection.php';
 require_once 'includes/oauth-config.php';
 require_once 'vendor/autoload.php';
 
+// Instantiate Guzzle client with custom CA bundle to resolve cURL error 77 on VPS
+$guzzleOptions = [];
+$cacertPath = __DIR__ . '/includes/cacert.pem';
+if (file_exists($cacertPath)) {
+    $guzzleOptions[\GuzzleHttp\RequestOptions::VERIFY] = $cacertPath;
+}
+$httpClient = new \GuzzleHttp\Client($guzzleOptions);
+
 $provider = new League\OAuth2\Client\Provider\Google([
     'clientId'     => GOOGLE_CLIENT_ID,
     'clientSecret' => GOOGLE_CLIENT_SECRET,
     'redirectUri'  => GOOGLE_REDIRECT_URI,
 ]);
+$provider->setHttpClient($httpClient);
 
 // Step 1: No code yet — redirect user to Google login
 if (!isset($_GET['code'])) {
@@ -63,10 +72,21 @@ $photoUrl = $googleUser->getAvatar()   ?? null;
 // (requires the user.birthday.read scope; may be null if not set in Google account)
 $dob = null;
 try {
-    $ctx = stream_context_create(['http' => [
-        'header'  => 'Authorization: Bearer ' . $token->getToken(),
-        'timeout' => 5,
-    ]]);
+    $sslOptions = [];
+    $cacertPath = __DIR__ . '/includes/cacert.pem';
+    if (file_exists($cacertPath)) {
+        $sslOptions = [
+            'cafile' => $cacertPath,
+            'verify_peer' => true,
+        ];
+    }
+    $ctx = stream_context_create([
+        'http' => [
+            'header'  => 'Authorization: Bearer ' . $token->getToken(),
+            'timeout' => 5,
+        ],
+        'ssl' => $sslOptions
+    ]);
     $peopleRaw = @file_get_contents(
         'https://people.googleapis.com/v1/people/me?personFields=birthdays',
         false, $ctx
@@ -96,7 +116,21 @@ if ($photoUrl) {
             mkdir($photoDir, 0755, true);
         }
         $photoFilename = 'google_' . $oauthId . '.jpg';
-        $photoData = @file_get_contents($photoUrl);
+        $sslOptions = [];
+        $cacertPath = __DIR__ . '/includes/cacert.pem';
+        if (file_exists($cacertPath)) {
+            $sslOptions = [
+                'cafile' => $cacertPath,
+                'verify_peer' => true,
+            ];
+        }
+        $photoCtx = stream_context_create([
+            'http' => [
+                'timeout' => 5,
+            ],
+            'ssl' => $sslOptions
+        ]);
+        $photoData = @file_get_contents($photoUrl, false, $photoCtx);
         if ($photoData !== false) {
             file_put_contents($photoDir . $photoFilename, $photoData);
             $photoPath = 'images/oauth/' . $photoFilename;

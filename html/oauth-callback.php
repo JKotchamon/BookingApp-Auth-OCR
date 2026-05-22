@@ -7,6 +7,14 @@ require_once 'includes/dbconnection.php';
 require_once 'includes/oauth-config.php';
 require_once 'vendor/autoload.php';
 
+// Instantiate Guzzle client with custom CA bundle to resolve cURL error 77 on VPS
+$guzzleOptions = [];
+$cacertPath = __DIR__ . '/includes/cacert.pem';
+if (file_exists($cacertPath)) {
+    $guzzleOptions[\GuzzleHttp\RequestOptions::VERIFY] = $cacertPath;
+}
+$httpClient = new \GuzzleHttp\Client($guzzleOptions);
+
 $provider = new TheNetworg\OAuth2\Client\Provider\Azure([
     'clientId'               => MICROSOFT_CLIENT_ID,
     'clientSecret'           => MICROSOFT_CLIENT_SECRET,
@@ -15,6 +23,7 @@ $provider = new TheNetworg\OAuth2\Client\Provider\Azure([
     'scopes'                 => ['openid', 'profile', 'email', 'User.Read'],
     'defaultEndPointVersion' => '2.0',
 ]);
+$provider->setHttpClient($httpClient);
 
 // Step 1: No code yet — redirect user to Microsoft login
 if (!isset($_GET['code'])) {
