@@ -8,3 +8,12 @@ Thumbs.db
 # Local documentation
 docs/
 keys/
+
+# Production build outputs
+production_build/
+*.zip
+build_production.sh
+deploy_prod.sh
+
+# Temporary uploads and keys
+html/uploads/kyc_temp/

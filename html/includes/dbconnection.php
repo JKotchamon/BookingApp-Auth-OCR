@@ -2,14 +2,23 @@
 // DB credentials.
 // Load env if not already loaded (useful for scripts that don't include oauth-config)
 if (!getenv('DB_HOST')) {
-    $possibleEnvPaths = [__DIR__ . '/.env', dirname(__DIR__) . '/.env'];
+    $possibleEnvPaths = [
+        __DIR__ . '/.env',
+        dirname(__DIR__) . '/.env',
+        dirname(dirname(__DIR__)) . '/.env'
+    ];
     foreach ($possibleEnvPaths as $envFile) {
         if (file_exists($envFile)) {
             $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
             foreach ($lines as $line) {
                 if (str_starts_with(trim($line), '#')) continue;
                 $parts = explode('=', $line, 2);
-                if (count($parts) === 2) putenv(trim($parts[0]) . "=" . trim($parts[1]));
+                if (count($parts) === 2) {
+                    $key = trim($parts[0]);
+                    $val = trim($parts[1]);
+                    putenv("$key=$val");
+                    $_ENV[$key] = $val;
+                }
             }
             break;
         }
