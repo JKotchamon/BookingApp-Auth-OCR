@@ -170,11 +170,11 @@ if (strlen($_SESSION['hbmsaid'] == 0)) {
         box-shadow: 0 12px 35px rgba(0, 0, 0, 0.04);
     }
     .premium-panel-heading {
-        background: #f8f9fc;
+        background: #f8fafc;
         padding: 18px 24px;
         border-bottom: 1px solid rgba(0, 0, 0, 0.04);
         font-weight: 700;
-        color: #2e59d9;
+        color: #1e293b;
         font-size: 15px;
         letter-spacing: 0.3px;
         display: flex;
@@ -185,15 +185,15 @@ if (strlen($_SESSION['hbmsaid'] == 0)) {
         padding: 24px;
     }
     .info-card {
-        border-left: 5px solid #36b9cc;
-        background: #f0fbfc;
+        border-left: 5px solid #475569;
+        background: #f8fafc;
         border-radius: 8px;
         padding: 18px 22px;
         margin-bottom: 25px;
-        box-shadow: 0 4px 10px rgba(54, 185, 204, 0.04);
+        box-shadow: 0 4px 10px rgba(15, 23, 42, 0.02);
     }
     .info-card h5 {
-        color: #2c7a7b;
+        color: #1e293b;
         font-weight: 700;
         margin-top: 0;
         margin-bottom: 8px;
@@ -228,6 +228,11 @@ if (strlen($_SESSION['hbmsaid'] == 0)) {
         display: flex;
         align-items: center;
         gap: 10px;
+        color: inherit !important;
+    }
+    .status-banner-title span,
+    .status-banner-title i {
+        color: inherit !important;
     }
     .status-banner-badge {
         font-size: 14px;
@@ -235,10 +240,15 @@ if (strlen($_SESSION['hbmsaid'] == 0)) {
         display: inline-flex;
         align-items: center;
         gap: 6px;
+        color: inherit !important;
+    }
+    .status-banner-badge span,
+    .status-banner-badge i {
+        color: inherit !important;
     }
     .custom-upload-zone {
-        border: 2px dashed #4e73df;
-        background: #f8f9fc;
+        border: 2px dashed #475569;
+        background: #f8fafc;
         border-radius: 12px;
         padding: 26px 20px;
         text-align: center;
@@ -252,9 +262,9 @@ if (strlen($_SESSION['hbmsaid'] == 0)) {
         margin-bottom: 20px;
     }
     .custom-upload-zone:hover {
-        border-color: #224abe;
-        background: #f0f4fd;
-        box-shadow: 0 4px 15px rgba(78, 115, 223, 0.08);
+        border-color: #0f172a;
+        background: #f1f5f9;
+        box-shadow: 0 4px 15px rgba(15, 23, 42, 0.08);
     }
     .custom-upload-zone.dragover {
         border-color: #1cc88a;
@@ -263,7 +273,7 @@ if (strlen($_SESSION['hbmsaid'] == 0)) {
     }
     .upload-zone-icon {
         font-size: 38px;
-        color: #4e73df;
+        color: #1e293b;
         margin-bottom: 10px;
         transition: transform 0.3s ease;
     }
@@ -273,18 +283,18 @@ if (strlen($_SESSION['hbmsaid'] == 0)) {
     .upload-zone-text {
         font-size: 14.5px;
         font-weight: 500;
-        color: #2e384d;
+        color: #334155;
         display: block;
         margin-bottom: 4px;
     }
     .browse-btn-text {
-        color: #4e73df;
+        color: #0f172a;
         font-weight: 700;
         text-decoration: underline;
     }
     .upload-zone-sub {
         font-size: 12px;
-        color: #858796;
+        color: #64748b;
         display: block;
     }
     .file-name-container {
@@ -292,10 +302,10 @@ if (strlen($_SESSION['hbmsaid'] == 0)) {
         background: #ffffff;
         padding: 6px 14px;
         border-radius: 6px;
-        border: 1px solid #d1d3e2;
+        border: 1px solid #cbd5e1;
         font-size: 13px;
         font-weight: 600;
-        color: #4e73df;
+        color: #0f172a;
         display: inline-flex;
         align-items: center;
         gap: 6px;
@@ -307,7 +317,7 @@ if (strlen($_SESSION['hbmsaid'] == 0)) {
         to { opacity: 1; transform: translateY(0); }
     }
     .btn-premium-primary {
-        background: linear-gradient(135deg, #4e73df 0%, #224abe 100%);
+        background: linear-gradient(135deg, #334155 0%, #0f172a 100%);
         color: white !important;
         border: none;
         border-radius: 8px;
@@ -318,11 +328,11 @@ if (strlen($_SESSION['hbmsaid'] == 0)) {
         align-items: center;
         gap: 8px;
         transition: all 0.3s ease;
-        box-shadow: 0 4px 10px rgba(78, 115, 223, 0.2);
+        box-shadow: 0 4px 10px rgba(15, 23, 42, 0.2);
     }
     .btn-premium-primary:hover {
-        background: linear-gradient(135deg, #224abe 0%, #1a3ab3 100%);
-        box-shadow: 0 6px 15px rgba(78, 115, 223, 0.3);
+        background: linear-gradient(135deg, #1e293b 0%, #020617 100%);
+        box-shadow: 0 6px 15px rgba(15, 23, 42, 0.3);
         transform: translateY(-1.5px);
         text-decoration: none;
     }
@@ -330,38 +340,38 @@ if (strlen($_SESSION['hbmsaid'] == 0)) {
         transform: translateY(0);
     }
     .key-table th {
-        background: #f8f9fc;
+        background: #f8fafc;
         font-weight: 700;
-        color: #4e73df;
+        color: #475569;
         font-size: 11px;
         text-transform: uppercase;
         letter-spacing: 0.8px;
         padding: 14px 18px !important;
-        border-bottom: 2px solid #eaecf4 !important;
+        border-bottom: 2px solid #e2e8f0 !important;
     }
     .key-table td {
         vertical-align: middle !important;
         padding: 14px 18px !important;
         font-size: 13.5px;
-        color: #495057;
-        border-bottom: 1px solid #eaecf4 !important;
+        color: #334155;
+        border-bottom: 1px solid #e2e8f0 !important;
     }
     .key-table tr {
         transition: background-color 0.15s ease;
     }
     .key-table tr:hover {
-        background-color: #f8f9fc;
+        background-color: #f8fafc;
     }
     .fingerprint-text {
         font-family: 'Courier New', Courier, monospace;
         font-weight: 700;
-        background: #f8f9fa;
+        background: #f8fafc;
         padding: 5px 9px;
         border-radius: 6px;
-        border: 1px solid #eaecf4;
+        border: 1px solid #e2e8f0;
         font-size: 12.5px;
         word-break: break-all;
-        color: #4e73df;
+        color: #334155;
         display: inline-block;
     }
     .status-badge {
@@ -384,9 +394,9 @@ if (strlen($_SESSION['hbmsaid'] == 0)) {
         border: 1px solid #e9ecef;
     }
     .copy-btn {
-        background: #f1f3f9;
-        border: 1px solid #d1d3e2;
-        color: #4e73df;
+        background: #f1f5f9;
+        border: 1px solid #cbd5e1;
+        color: #475569;
         cursor: pointer;
         padding: 5px 9px;
         border-radius: 6px;
@@ -397,9 +407,9 @@ if (strlen($_SESSION['hbmsaid'] == 0)) {
         margin-left: 6px;
     }
     .copy-btn:hover {
-        background: #4e73df;
+        background: #1e293b;
         color: white;
-        border-color: #4e73df;
+        border-color: #1e293b;
         transform: scale(1.05);
     }
     .btn-action-activate {
@@ -524,7 +534,7 @@ if (strlen($_SESSION['hbmsaid'] == 0)) {
                                         <div class="premium-panel">
                                             <div class="premium-panel-heading">
                                                 <span><i class="fa fa-list-alt"></i> Registered Public Keys</span>
-                                                <span class="badge" style="background: #4e73df; font-weight: 700; padding: 6px 12px; font-size: 11px; border-radius: 12px;"><?php echo count($keys); ?> Keys Found</span>
+                                                <span class="badge" style="background: #1e293b; font-weight: 700; padding: 6px 12px; font-size: 11px; border-radius: 12px;"><?php echo count($keys); ?> Keys Found</span>
                                             </div>
                                             <div class="premium-panel-body" style="padding: 0;">
                                                 <div class="table-responsive">
@@ -617,7 +627,7 @@ if (strlen($_SESSION['hbmsaid'] == 0)) {
             notification.style.position = 'fixed';
             notification.style.bottom = '20px';
             notification.style.right = '20px';
-            notification.style.background = '#4e73df';
+            notification.style.background = '#1e293b';
             notification.style.color = '#fff';
             notification.style.padding = '12px 24px';
             notification.style.borderRadius = '8px';
@@ -670,8 +680,8 @@ if (strlen($_SESSION['hbmsaid'] == 0)) {
                     uploadZone.style.background = '#f0fdf4';
                 } else {
                     fileNameContainer.style.display = 'none';
-                    uploadZone.style.borderColor = '#4e73df';
-                    uploadZone.style.background = '#f8f9fc';
+                    uploadZone.style.borderColor = '#475569';
+                    uploadZone.style.background = '#f8fafc';
                 }
             });
 

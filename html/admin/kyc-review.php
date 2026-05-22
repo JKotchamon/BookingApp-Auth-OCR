@@ -168,26 +168,26 @@ ob_end_flush();
                                         ?>
                                         <?php if (!empty($serverKeys)): ?>
                                         <!-- Server Registered Keys Reference Widget -->
-                                        <div style="margin-bottom: 20px; background: #f8f9fc; border: 1px solid #eaecf4; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                                        <div style="margin-bottom: 20px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
                                             <div id="toggleKeysHeader" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 12px 18px; user-select: none;" onclick="toggleKeysReference()">
-                                                <span style="font-weight: bold; color: #4e73df; font-size: 14px;">
-                                                    <i class="fa fa-info-circle" style="color: #4e73df; margin-right: 5px;"></i> 
+                                                <span style="font-weight: bold; color: #1e293b; font-size: 14px;">
+                                                    <i class="fa fa-info-circle" style="color: #1e293b; margin-right: 5px;"></i> 
                                                     Registered Server Keys Reference (Active Fingerprints)
                                                 </span>
-                                                <span id="keysToggleIcon" style="color: #4e73df; font-size: 12px; font-weight: bold;">
+                                                <span id="keysToggleIcon" style="color: #1e293b; font-size: 12px; font-weight: bold;">
                                                     <i class="fa fa-chevron-down"></i> Show Registered Keys
                                                 </span>
                                             </div>
-                                            <div id="keysReferenceBody" style="display: none; border-top: 1px dashed #eaecf4; padding: 15px 18px; background: #ffffff; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;">
-                                                <p style="font-size: 12px; color: #858796; margin-bottom: 12px; line-height: 1.5;">
+                                            <div id="keysReferenceBody" style="display: none; border-top: 1px dashed #cbd5e1; padding: 15px 18px; background: #ffffff; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;">
+                                                <p style="font-size: 12px; color: #64748b; margin-bottom: 12px; line-height: 1.5;">
                                                     Below are the public keys currently uploaded to the server. Match the required fingerprint shown in the table to one of the keys below to know which private key file you need to upload for decryption.
                                                 </p>
                                                 <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px;">
                                                     <?php foreach ($serverKeys as $fp => $kData): ?>
-                                                        <div style="background: #fdfdfd; border: 1px solid #e3e6f0; border-radius: 6px; padding: 10px 14px; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,0.01); display: flex; flex-direction: column; justify-content: space-between; transition: all 0.2s ease-in-out;">
+                                                        <div style="background: #fdfdfd; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 14px; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,0.01); display: flex; flex-direction: column; justify-content: space-between; transition: all 0.2s ease-in-out;">
                                                             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
-                                                                <strong style="font-size: 12px; color: #2e59d9;">
-                                                                    <i class="fa fa-key" style="color: #f39c12; margin-right: 4px;"></i>
+                                                                <strong style="font-size: 12px; color: #0f172a;">
+                                                                    <i class="fa fa-key" style="color: #cbd5e1; margin-right: 4px;"></i>
                                                                     <?php echo htmlentities($kData['name']); ?>
                                                                 </strong>
                                                                 <?php if ($kData['is_active']): ?>
@@ -197,9 +197,9 @@ ob_end_flush();
                                                                 <?php endif; ?>
                                                             </div>
                                                             <div style="display: flex; align-items: center; gap: 6px; width: 100%;">
-                                                                <code style="font-size: 11px; font-family: 'Courier New', Courier, monospace; background: #f8f9fc; border: 1px solid #eaecf4; color: #4e73df; padding: 3px 8px; border-radius: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-grow: 1;" title="<?php echo $fp; ?>"><?php echo $fp; ?></code>
-                                                                <button class="btn btn-default btn-xs" style="padding: 3px 6px; font-size: 10px; border-color: #ddd;" onclick="copyFingerprint('<?php echo $fp; ?>')" title="Copy SHA-256 fingerprint">
-                                                                    <i class="fa fa-copy"></i>
+                                                                <code style="font-size: 11px; font-family: 'Courier New', Courier, monospace; background: #f8fafc; border: 1px solid #e2e8f0; color: #334155; padding: 3px 8px; border-radius: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-grow: 1;" title="<?php echo $fp; ?>"><?php echo $fp; ?></code>
+                                                                <button class="btn btn-default btn-xs" style="padding: 3px 6px; font-size: 10px; border-color: #cbd5e1;" onclick="copyFingerprint('<?php echo $fp; ?>')" title="Copy SHA-256 fingerprint">
+                                                                    <i class="fa fa-copy" style="color: #475569;"></i>
                                                                 </button>
                                                             </div>
                                                         </div>
@@ -262,17 +262,17 @@ ob_end_flush();
                                                                  $keyName = 'Public Key (' . substr($rowFingerprint, 0, 8) . ')';
                                                              }
                                                          ?>
-                                                             <div style="display: inline-flex; align-items: center; gap: 8px; justify-content: center; background: #f8f9fc; border: 1px solid #eaecf4; padding: 6px 12px; border-radius: 6px;">
-                                                                 <span class="fingerprint-label" title="<?php echo htmlentities($rowFingerprint); ?>" style="font-family: 'Courier New', Courier, monospace; font-weight: bold; color: #4e73df; font-size: 11px; display: inline-block; text-align: left; word-break: break-all;">
-                                                                     <i class="fa fa-key" style="margin-right: 4px; color: #f39c12;"></i>
+                                                             <div style="display: inline-flex; align-items: center; gap: 8px; justify-content: center; background: #f8fafc; border: 1px solid #cbd5e1; padding: 6px 12px; border-radius: 6px;">
+                                                                 <span class="fingerprint-label" title="<?php echo htmlentities($rowFingerprint); ?>" style="font-family: 'Courier New', Courier, monospace; font-weight: bold; color: #334155; font-size: 11px; display: inline-block; text-align: left; word-break: break-all;">
+                                                                     <i class="fa fa-key" style="margin-right: 4px; color: #475569;"></i>
                                                                      <strong><?php echo htmlentities($keyName); ?></strong> - 
-                                                                     <span style="color: #666; font-weight: normal;"><?php echo htmlentities($rowFingerprint); ?></span>
+                                                                     <span style="color: #64748b; font-weight: normal;"><?php echo htmlentities($rowFingerprint); ?></span>
                                                                      <?php if (empty($row->key_fingerprint) && !empty($legacyFP)): ?>
-                                                                         <br><span style="font-size: 9px; color: #858796; font-weight: normal; text-transform: uppercase; display: block; margin-top: 2px;">Legacy Key</span>
+                                                                         <br><span style="font-size: 9px; color: #64748b; font-weight: normal; text-transform: uppercase; display: block; margin-top: 2px;">Legacy Key</span>
                                                                      <?php endif; ?>
                                                                  </span>
-                                                                 <button class="btn btn-default btn-xs" style="padding: 3px 6px; font-size: 10px; border-color: #ddd; background: #fff; flex-shrink: 0;" onclick="copyFingerprint('<?php echo $rowFingerprint; ?>')" title="Copy required key fingerprint">
-                                                                     <i class="fa fa-copy" style="color: #4e73df;"></i>
+                                                                 <button class="btn btn-default btn-xs" style="padding: 3px 6px; font-size: 10px; border-color: #cbd5e1; background: #fff; flex-shrink: 0;" onclick="copyFingerprint('<?php echo $rowFingerprint; ?>')" title="Copy required key fingerprint">
+                                                                     <i class="fa fa-copy" style="color: #475569;"></i>
                                                                  </button>
                                                              </div>
                                                          <?php else: ?>
@@ -365,7 +365,7 @@ function copyFingerprint(fp) {
         notification.style.position = 'fixed';
         notification.style.bottom = '20px';
         notification.style.right = '20px';
-        notification.style.background = '#4e73df';
+        notification.style.background = '#1e293b';
         notification.style.color = '#fff';
         notification.style.padding = '12px 24px';
         notification.style.borderRadius = '8px';
