@@ -13,7 +13,7 @@
  * @return string|false The public key file contents, or false if not found.
  */
 function getPublicKey() {
-    $keyPath = __DIR__ . '/kyc_public_key.pem';
+    $keyPath = __DIR__ . '/../../kyc_public_key.pem';
     if (file_exists($keyPath)) {
         return file_get_contents($keyPath);
     }
