@@ -8,6 +8,7 @@ $uid = $_SESSION['hbmsuid'];
 $ocrData = null;
 $error = null;
 $blocked = false;
+$isSystemActive = file_exists(__DIR__ . '/includes/kyc_public_key.pem');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['passport'])) {
     // 1. Consent check
@@ -75,9 +76,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['passport'])) {
                             // Flag the attempt in DB
                             require_once 'includes/encryption.php';
 
-                            $nameEnc   = encryptField(strtoupper(trim($ocrData['name'] ?? '')));
-                            $dobEnc    = encryptField($ocrData['dob'] ?? '');
-                            $numEnc    = encryptField($ocrData['passport_number']);
+                            $nameEnc   = encryptTextRSA(strtoupper(trim($ocrData['name'] ?? '')));
+                            $dobEnc    = encryptTextRSA($ocrData['dob'] ?? '');
+                            $numEnc    = encryptTextRSA($ocrData['passport_number']);
                             $blindHash = computeBlindIndex($ocrData['passport_number']);
 
                             $vq = $dbh->prepare('SELECT MAX(version) FROM tbl_kyc_records WHERE user_id=:uid');
@@ -89,8 +90,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['passport'])) {
 
                             $logSql = "INSERT INTO tbl_kyc_records (user_id,version,is_current,verification_status,
                                        full_name_encrypted,date_of_birth_enc,document_number_enc,
-                                       document_number_hash,nationality,expiry_date,rejection_reason,temp_image_path)
-                                       VALUES (:uid,:ver,1,:st,:pne,:dobe,:numenc,:hash,:nat,:exp,:md,:ipath)";
+                                       document_number_hash,nationality,expiry_date,rejection_reason,temp_image_path,symmetric_key_enc,iv)
+                                       VALUES (:uid,:ver,1,:st,:pne,:dobe,:numenc,:hash,:nat,:exp,:md,:ipath,NULL,NULL)";
                             $dbh->prepare($logSql)->execute([
                                 ':uid'    => $uid,
                                 ':ver'    => $ver,
@@ -230,7 +231,12 @@ unset($_SESSION['kyc_msg']);
                             <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
                         <?php endif; ?>
 
-                        <?php if (!$ocrData && !$blocked): ?>
+                        <?php if (!$isSystemActive): ?>
+                            <div class="alert alert-warning" style="text-align: center; padding: 40px; border-radius: 12px; margin-top: 20px;">
+                                <h3 style="color: #e67e22; margin-bottom: 15px;">🚧 System Maintenance 🚧</h3>
+                                <p style="font-size: 1.1em; color: #555;">The identity verification system is currently undergoing cryptographic maintenance to ensure your data remains completely secure. Please check back later.</p>
+                            </div>
+                        <?php elseif (!$ocrData && !$blocked): ?>
                             <p style="margin-bottom: 20px; font-size: 1.1em; color: #555;">
                                 Secure Identity Anchoring: To keep our community safe, we use advanced OCR to verify your identity. 
                                 It's a quick one-time process—just upload a clear photo of your <strong>Passport</strong>.

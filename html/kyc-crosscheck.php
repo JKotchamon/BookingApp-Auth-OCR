@@ -117,23 +117,29 @@ if ($newStatus !== 'rejected' && !empty($passportDOB)) {
 $twoYears  = date('Y-m-d', strtotime('+2 years'));
 $kycExpiry = (!empty($expiryDate) && $expiryDate < $twoYears) ? $expiryDate : $twoYears;
 
-// 5. Encrypt sensitive fields
-$nameEnc   = encryptField($passportName);
-$dobEnc    = encryptField($passportDOB);
-$numEnc    = encryptField($passportNumber);
+// 5. Encrypt sensitive text fields with RSA
+$nameEnc   = encryptTextRSA($passportName);
+$dobEnc    = encryptTextRSA($passportDOB);
+$numEnc    = encryptTextRSA($passportNumber);
 $blindHash = computeBlindIndex($passportNumber);
 
-// 6. Handle Temporary Image Lifecycle
+// 6. Handle Temporary Image Lifecycle (Hybrid Encryption)
 $sessionTempFile = 'uploads/kyc_temp/sess_' . session_id() . '.jpg';
 $finalImagePath = null;
+$symmetricKeyEnc = null;
+$ivEnc = null;
 
 if ($newStatus === 'pending') {
-    // Keep it for admin review
-    $tempName = bin2hex(random_bytes(16)) . '.jpg';
+    // Encrypt the image with AES, and encrypt the AES key with RSA
+    $tempName = bin2hex(random_bytes(16)) . '.enc';
     $finalPath = 'uploads/kyc_temp/' . $tempName;
     if (file_exists($sessionTempFile)) {
-        rename($sessionTempFile, $finalPath);
-        $finalImagePath = $tempName;
+        $hybridResult = encryptFileHybrid($sessionTempFile, $finalPath);
+        if ($hybridResult) {
+            $finalImagePath = $tempName;
+            $symmetricKeyEnc = $hybridResult['encrypted_key'];
+            $ivEnc = $hybridResult['iv'];
+        }
     }
 } else {
     // Auto-verified or Hard Blocked -> Delete image immediately
@@ -155,8 +161,8 @@ $dbh->prepare('UPDATE tbl_kyc_records SET is_current=0 WHERE user_id=:uid')
 $log = $dbh->prepare(
     'INSERT INTO tbl_kyc_records (user_id,version,is_current,verification_status,
         full_name_encrypted,date_of_birth_enc,document_number_enc,
-        document_number_hash,nationality,expiry_date,name_match_score,rejection_reason,temp_image_path)
-     VALUES (:uid,:ver,1,:st,:pne,:dobe,:numenc,:hash,:nat,:exp,:score,:md,:ipath)'
+        document_number_hash,nationality,expiry_date,name_match_score,rejection_reason,temp_image_path,symmetric_key_enc,iv)
+     VALUES (:uid,:ver,1,:st,:pne,:dobe,:numenc,:hash,:nat,:exp,:score,:md,:ipath,:symkey,:iv)'
 );
 $log->execute([
     ':uid'    => $uid,
@@ -171,6 +177,8 @@ $log->execute([
     ':score'  => $matchScore,
     ':md'     => $mismatch,
     ':ipath'  => $finalImagePath,
+    ':symkey' => $symmetricKeyEnc,
+    ':iv'     => $ivEnc
 ]);
 
 // 10. Audit Log
