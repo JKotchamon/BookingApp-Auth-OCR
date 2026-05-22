@@ -545,7 +545,7 @@ document.getElementById('privateKeyFile').addEventListener('change', function(e)
             let statusHtml = `
                 <div class="alert alert-success alert-dismissible" role="alert" style="margin-top: 15px;">
                     <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                    <strong><i class="fa fa-unlock"></i> Key Applied:</strong> Successfully decrypted <strong>\${decryptedCount}</strong> record(s) matching public key fingerprint <code style="font-size: 11px;">\${computedFingerprint.substring(0, 16)}...</code>
+                    <strong><i class="fa fa-unlock"></i> Key Applied:</strong> Successfully decrypted <strong>${decryptedCount}</strong> record(s) matching public key fingerprint <code style="font-size: 11px;">${computedFingerprint.substring(0, 16)}...</code>
                 </div>
             `;
 
@@ -554,7 +554,7 @@ document.getElementById('privateKeyFile').addEventListener('change', function(e)
                 statusHtml += `
                     <div class="alert alert-warning alert-dismissible" role="alert" style="margin-top: 10px;">
                         <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                        <strong><i class="fa fa-exclamation-triangle"></i> Locked Records:</strong> <strong>\${skippedCount}</strong> record(s) were skipped because they require a different private key (Fingerprints: <code>\${skippedFpList}</code>).
+                        <strong><i class="fa fa-exclamation-triangle"></i> Locked Records:</strong> <strong>${skippedCount}</strong> record(s) were skipped because they require a different private key (Fingerprints: <code>${skippedFpList}</code>).
                     </div>
                 `;
             }
@@ -563,7 +563,7 @@ document.getElementById('privateKeyFile').addEventListener('change', function(e)
                 statusHtml += `
                     <div class="alert alert-danger alert-dismissible" role="alert" style="margin-top: 10px;">
                         <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                        <strong><i class="fa fa-times-circle"></i> Decryption Failed:</strong> Failed to decrypt <strong>\${failedCount}</strong> legacy/corrupted record(s) with this key.
+                        <strong><i class="fa fa-times-circle"></i> Decryption Failed:</strong> Failed to decrypt <strong>${failedCount}</strong> legacy/corrupted record(s) with this key.
                     </div>
                 `;
             }
