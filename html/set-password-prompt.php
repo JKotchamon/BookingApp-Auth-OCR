@@ -68,7 +68,7 @@ $flash = $_GET['msg'] ?? '';
                 <div style="margin-top:18px;">
                     <form method="post" action="send-set-password.php" style="display:inline-block; margin-right:10px;">
                         <button type="submit"
-                                style="background:#2563eb; color:#fff; border:0; padding:12px 22px;
+                                style="background:#111; color:#fff; border:0; padding:12px 22px;
                                        border-radius:6px; font-weight:600; cursor:pointer;">
                             Yes, send me a Set Password email
                         </button>
