@@ -25,11 +25,7 @@ if ($status === 'verified' && $expiry && strtotime($expiry) <= time()) {
     $status = 'expired';
 }
 
-// If verified and not expired — go straight to booking
-if ($status === 'verified') {
-    header('Location: book-room.php');
-    exit;
-}
+// If verified and not expired — allow them to see the verified status page instead of force redirecting
 
 // 30-day expiry warning
 $expiryWarning = false;
@@ -46,6 +42,16 @@ if ($status === 'verified' && $expiry) {
 <link href="css/style.css" rel="stylesheet" type="text/css" media="all" />
 <script src="js/jquery-1.11.1.min.js"></script>
 <script src="js/bootstrap.js"></script>
+<style>
+    body {
+        display: flex;
+        min-height: 100vh;
+        flex-direction: column;
+    }
+    .content {
+        flex: 1;
+    }
+</style>
 </head>
 <body>
     <div class="header head-top">
@@ -116,12 +122,14 @@ if ($status === 'verified' && $expiry) {
                                 You haven't verified your identity yet.<br><br>
                                 <a href="kyc-verify.php" class="btn btn-warning">Upload your passport to continue</a>
                             </div>
+                        <?php elseif ($status === 'verified'): ?>
+                            <div class="alert alert-success">
+                                <strong>Verification Successful</strong><br>
+                                Your identity has been verified. You now have full access to all booking features.
+                            </div>
                         <?php endif; ?>
 
-                        <div style="margin-top: 30px; text-align: center;">
-                            <a href="profile.php" class="btn btn-default" style="color: #666; text-decoration: none;">&larr; Back to My Account</a>
-                            <a href="index.php" class="btn btn-primary" style="margin-left: 10px;">Back to Home</a>
-                        </div>
+
                     </div>
                     <div class="clearfix"> </div>
                 </div>
