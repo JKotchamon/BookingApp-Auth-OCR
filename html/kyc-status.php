@@ -89,7 +89,19 @@ if ($status === 'verified' && $expiry) {
                         <?php elseif ($status === 'rejected'): ?>
                             <div class="alert alert-danger">
                                 <strong>Verification Failed</strong><br>
-                                We couldn't verify your identity. This might be because the uploaded document is unclear or doesn't match your account details.<br><br>
+                                <?php 
+                                if ($reason) {
+                                    if (strpos($reason, 'HARD BLOCK') !== false) {
+                                        echo "The name on the passport does not match the name registered on your account.";
+                                    } elseif (strpos($reason, 'User is under 18') !== false) {
+                                        echo "You must be 18 or older to verify your identity.";
+                                    } else {
+                                        echo htmlspecialchars($reason);
+                                    }
+                                } else {
+                                    echo "We couldn't verify your identity. This might be because the uploaded document is unclear or doesn't match your account details.";
+                                }
+                                ?><br><br>
                                 <a href="kyc-verify.php" class="btn btn-danger">Try again with a valid passport</a>
                             </div>
                         <?php elseif ($status === 'expired'): ?>

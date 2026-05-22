@@ -76,7 +76,7 @@ $isHighVariance = false;
 $varianceReason = '';
 
 // If passport number was changed at all, it's a variance (could be typo fix or fraud)
-if ($passportNumber !== $rawOcrNumber) {
+if ($rawOcrNumber !== '' && $passportNumber !== $rawOcrNumber) {
     $isHighVariance = true;
     $varianceReason = 'Passport Number Edited (OCR: '.$rawOcrNumber.' | Submitted: '.$passportNumber.')';
 }
@@ -91,10 +91,15 @@ if ($rawOcrName !== '') {
     }
 }
 
-if ($isHighVariance && $newStatus === 'verified') {
-    // Demote auto-verified to pending if they edited the data significantly
-    $newStatus = 'pending';
-    $mismatch = 'OCR VARIANCE DETECTED: Manual review triggered due to significant field adjustment.';
+if ($isHighVariance) {
+    if ($newStatus === 'verified') {
+        // Demote auto-verified to pending if they edited the data significantly
+        $newStatus = 'pending';
+        $mismatch = 'OCR VARIANCE: ' . $varianceReason;
+    } elseif ($newStatus === 'pending') {
+        // Append variance to existing pending reason
+        $mismatch .= ' | OCR VARIANCE: ' . $varianceReason;
+    }
 }
 
 // 3.1 Age Check (Must be 18+)

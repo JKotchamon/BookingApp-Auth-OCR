@@ -268,6 +268,8 @@ unset($_SESSION['kyc_msg']);
                                 <div class="panel-body">
                                     <form method="POST" action="kyc-crosscheck.php">
                                         <input type="hidden" name="rmid" value="<?php echo (int)($_GET['rmid'] ?? $_POST['rmid'] ?? 0); ?>">
+                                        <input type="hidden" name="raw_ocr_name" value="<?php echo htmlspecialchars($ocrData['name'] ?? ''); ?>">
+                                        <input type="hidden" name="raw_ocr_number" value="<?php echo htmlspecialchars($ocrData['passport_number'] ?? ''); ?>">
                                         <div class="form-group">
                                             <label>Full Name (as on passport)</label>
                                             <input type="text" name="passport_name" class="form-control" value="<?php echo htmlspecialchars($ocrData['name'] ?? ''); ?>" required>
