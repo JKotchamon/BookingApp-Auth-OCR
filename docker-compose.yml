@@ -25,6 +25,10 @@ services:
       - ./migrations/V001__oauth_user_columns.sql:/docker-entrypoint-initdb.d/01_V001__oauth_user_columns.sql
       - ./migrations/V002__kyc_schema.sql:/docker-entrypoint-initdb.d/02_V002__kyc_schema.sql
       - ./migrations/V003__tighten_auth_method_enum.sql:/docker-entrypoint-initdb.d/03_V003__tighten_auth_method_enum.sql
+      - ./migrations/V004__add_registration_name.sql:/docker-entrypoint-initdb.d/04_V004__add_registration_name.sql
+      - ./migrations/V005__add_display_name.sql:/docker-entrypoint-initdb.d/05_V005__add_display_name.sql
+      - ./migrations/V006__kyc_audit_signature.sql:/docker-entrypoint-initdb.d/06_V006__kyc_audit_signature.sql
+      - ./migrations/V007__add_hybrid_encryption_columns.sql:/docker-entrypoint-initdb.d/07_V007__add_hybrid_encryption_columns.sql
       - db_data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-pStrongDBPassword@"]
