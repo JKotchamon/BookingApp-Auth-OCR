@@ -138,6 +138,7 @@ ob_end_flush();
                                                 <tr>
                                                     <th>User (OAuth)</th>
                                                     <th>Passport Details</th>
+                                                    <th style="width: 200px; text-align: center;">Required Key Fingerprint</th>
                                                     <th>Match Score</th>
                                                     <th>Flag Reason</th>
                                                     <th>Document</th>
@@ -170,13 +171,13 @@ ob_end_flush();
                                                     </td>
                                                     <td>
                                                         Name: <code class="dec-name" style="color:#666; background:#eee; padding:2px 5px;">[Encrypted Data]</code><br>
-                                                        Doc#: <code class="dec-num" style="color:#666; background:#eee; padding:2px 5px;">[Encrypted Data]</code><br>
-                                                        <small class="text-muted" style="display: block; margin-top: 4px;">
-                                                            <i class="fa fa-key"></i> Key Fingerprint: 
-                                                            <span class="fingerprint-label" title="<?php echo htmlentities($row->key_fingerprint); ?>" style="font-family: monospace; font-weight: bold; background: #e9ecef; padding: 1px 4px; border-radius: 3px;">
-                                                                <?php echo $row->key_fingerprint ? substr($row->key_fingerprint, 0, 12) . '...' : 'Legacy Key'; ?>
-                                                            </span>
-                                                        </small>
+                                                        Doc#: <code class="dec-num" style="color:#666; background:#eee; padding:2px 5px;">[Encrypted Data]</code>
+                                                    </td>
+                                                    <td style="text-align: center; vertical-align: middle;">
+                                                        <span class="fingerprint-label" title="<?php echo htmlentities($row->key_fingerprint); ?>" style="font-family: 'Courier New', Courier, monospace; font-weight: bold; background: #f8f9fc; border: 1px solid #eaecf4; color: #4e73df; padding: 4px 8px; border-radius: 6px; font-size: 12px; display: inline-block;">
+                                                            <i class="fa fa-key" style="margin-right: 4px; color: #f39c12;"></i>
+                                                            <?php echo $row->key_fingerprint ? substr($row->key_fingerprint, 0, 12) . '...' : 'Legacy Key'; ?>
+                                                        </span>
                                                     </td>
                                                     <td>
                                                         <span class="badge badge-warning"><?php echo $row->name_match_score; ?>%</span>
@@ -210,7 +211,7 @@ ob_end_flush();
                                                 </tr>
                                                 <?php } } else { ?>
                                                 <tr>
-                                                    <td colspan="6" class="text-center">No pending verifications found.</td>
+                                                    <td colspan="7" class="text-center">No pending verifications found.</td>
                                                 </tr>
                                                 <?php } ?>
                                             </tbody>
