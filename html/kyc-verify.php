@@ -2,13 +2,14 @@
 session_start();
 require_once 'includes/auth_check.php';
 require_once 'includes/dbconnection.php';
+require_once 'includes/encryption.php';
 require_once 'includes/kyc-handler.php';
 
 $uid = $_SESSION['hbmsuid'];
 $ocrData = null;
 $error = null;
 $blocked = false;
-$isSystemActive = file_exists(__DIR__ . '/keys/kyc_public_key.pem');
+$isSystemActive = getActivePublicKeyFingerprint() !== null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['passport'])) {
     // 1. Consent check
