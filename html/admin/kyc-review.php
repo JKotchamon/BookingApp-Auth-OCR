@@ -419,12 +419,29 @@ document.getElementById('privateKeyFile').addEventListener('change', function(e)
     const file = e.target.files[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = async function(e) {
-        const privateKeyPem = e.target.result;
-        try {
-            // Parse the private key
-            const privateKey = forge.pki.privateKeyFromPem(privateKeyPem);
+    // Show loading overlay
+    let overlay = document.getElementById('admin-loading-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'admin-loading-overlay';
+        overlay.style = 'display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.85); backdrop-filter: blur(5px); z-index: 9999; flex-direction: column; justify-content: center; align-items: center;';
+        overlay.innerHTML = `
+            <div style="width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid #f39c12; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+            <div style="margin-top: 15px; font-size: 16px; font-weight: bold; color: #333;">Decrypting Secure Data...</div>
+            <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
+        `;
+        document.body.appendChild(overlay);
+    }
+    overlay.style.display = 'flex';
+
+    // Small timeout to allow the browser to render the overlay before blocking work
+    setTimeout(() => {
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            const privateKeyPem = e.target.result;
+            try {
+                // Parse the private key
+                const privateKey = forge.pki.privateKeyFromPem(privateKeyPem);
             
             // Derive public key parameters and compute fingerprint
             const publicKey = forge.pki.setRsaPublicKey(privateKey.n, privateKey.e);
@@ -584,9 +601,14 @@ document.getElementById('privateKeyFile').addEventListener('change', function(e)
         } catch(err) {
             console.error(err);
             alert("Invalid Private Key file! Could not parse. Please ensure it's a valid RSA Private Key in PEM format.");
+        } finally {
+            if (document.getElementById('admin-loading-overlay')) {
+                document.getElementById('admin-loading-overlay').style.display = 'none';
+            }
         }
     };
     reader.readAsText(file);
+    }, 100);
 });
 </script>
 </body>
